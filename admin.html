@@ -24,7 +24,7 @@
 
   <section class="panel-card">
     <div class="profile-preview">
-      <img id="adminAvatar" class="profile-avatar large" alt="Foto de perfil del administrador">
+      <div id="adminAvatar" class="profile-avatar large avatar-fallback" aria-label="Foto de perfil del administrador"></div>
       <div>
         <h2 id="adminName">ADM</h2>
         <p class="product-meta">Administrador de Cannafy</p>
@@ -85,15 +85,28 @@ function roleLabel(role) {
   return "Consumidor";
 }
 
+function getInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function avatarMarkup(name, photo) {
+  if (photo) {
+    return `<img src="${photo}" class="profile-avatar" alt="${name}">`;
+  }
+  return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
 function pintarCabecera() {
   document.getElementById("adminName").textContent = currentUser.apodo || "ADM";
   const avatar = document.getElementById("adminAvatar");
   if (currentUser.foto_perfil) {
-    avatar.src = currentUser.foto_perfil;
-    avatar.classList.remove("empty");
+    avatar.style.backgroundImage = `url("${currentUser.foto_perfil}")`;
+    avatar.textContent = "";
+    avatar.classList.remove("empty", "avatar-fallback");
   } else {
-    avatar.removeAttribute("src");
-    avatar.classList.add("empty");
+    avatar.style.backgroundImage = "";
+    avatar.textContent = getInitial(currentUser.apodo || currentUser.nombre || "ADM");
+    avatar.classList.add("empty", "avatar-fallback");
   }
 }
 
@@ -114,7 +127,7 @@ function renderUsers(users) {
         </div>
       </div>
       <div class="profile-preview compact">
-        ${user.foto_perfil ? `<img src="${user.foto_perfil}" class="profile-avatar" alt="Foto de ${user.apodo || user.nombre}">` : '<div class="profile-avatar empty"></div>'}
+        ${avatarMarkup(user.apodo || user.nombre, user.foto_perfil)}
         <div>
           <h3>${user.apodo || user.nombre}</h3>
           <p class="helper-text">${user.correo}</p>

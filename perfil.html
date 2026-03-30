@@ -24,7 +24,7 @@
 
   <section class="panel-card profile-shell">
     <div class="profile-preview">
-      <img id="profilePreview" class="profile-avatar large" alt="Foto de perfil">
+      <div id="profilePreview" class="profile-avatar large avatar-fallback" aria-label="Foto de perfil"></div>
       <div>
         <h2 id="previewName">Tu perfil</h2>
         <p id="previewRole" class="product-meta"></p>
@@ -93,11 +93,13 @@ function pintarPreview() {
 
   const preview = document.getElementById("profilePreview");
   if (foto) {
-    preview.src = foto;
-    preview.classList.remove("empty");
+    preview.style.backgroundImage = `url("${foto}")`;
+    preview.textContent = "";
+    preview.classList.remove("empty", "avatar-fallback");
   } else {
-    preview.removeAttribute("src");
-    preview.classList.add("empty");
+    preview.style.backgroundImage = "";
+    preview.textContent = (apodo.charAt(0) || "?").toUpperCase();
+    preview.classList.add("empty", "avatar-fallback");
   }
 }
 

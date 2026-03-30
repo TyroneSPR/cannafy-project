@@ -75,6 +75,17 @@ async function api(path, options = {}) {
   return data;
 }
 
+function getInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function avatarMarkup(name, photo) {
+  if (photo) {
+    return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
+  }
+  return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
 async function cargarUsuarios() {
   const users = await api("/api/users");
   const container = document.getElementById("userList");
@@ -89,7 +100,7 @@ async function cargarUsuarios() {
     ${users.map((user) => `
       <button class="user-chip" onclick="crearOAbrirChat(${user.id})">
         <span class="identity-row">
-          <img class="profile-avatar" src="${user.foto_perfil || ''}" alt="${user.apodo || user.nombre}" onerror="this.style.visibility='hidden'">
+          ${avatarMarkup(user.apodo || user.nombre, user.foto_perfil)}
           <span>${user.apodo || user.nombre}</span>
         </span>
         <small>${user.role}</small>
@@ -173,7 +184,7 @@ async function cargarMensajes() {
     container.innerHTML = messages.map((message) => `
       <article class="message-bubble ${message.sender_id === currentUser.id ? "own" : ""}">
         <span class="identity-row">
-          <img class="profile-avatar" src="${message.sender_foto || ''}" alt="${message.sender_nombre}" onerror="this.style.visibility='hidden'">
+          ${avatarMarkup(message.sender_nombre, message.sender_foto)}
           <span class="product-meta">${message.sender_nombre}</span>
         </span>
         <p>${message.content}</p>

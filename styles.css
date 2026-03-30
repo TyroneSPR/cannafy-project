@@ -397,10 +397,16 @@ body.dashboard-page {
 .profile-avatar {
   width: 46px;
   height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   object-fit: cover;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
 }
 
 .profile-avatar.large {
@@ -410,6 +416,20 @@ body.dashboard-page {
 
 .profile-avatar.empty::after {
   content: "";
+}
+
+.avatar-fallback {
+  background:
+    radial-gradient(circle at top, rgba(125, 223, 145, 0.22), rgba(82, 182, 106, 0.1)),
+    rgba(255, 255, 255, 0.06);
+  color: #eaffee;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-avatar.large.avatar-fallback {
+  font-size: 2rem;
 }
 
 .store-header {
