@@ -30,6 +30,8 @@ ALLOWED_STATIC_FILES = {
     "chat.html",
     "social.html",
     "perfil.html",
+    "usuario.html",
+    "reportes.html",
     "admin.html",
     "acerca.html",
     "styles.css",
@@ -54,6 +56,7 @@ def ensure_store() -> None:
                 "conversations": [],
                 "posts": [],
                 "notifications": [],
+                "bug_reports": [],
             },
             indent=2,
         ),
@@ -109,6 +112,7 @@ def read_store() -> dict[str, Any]:
     store.setdefault("conversations", [])
     store.setdefault("posts", [])
     store.setdefault("notifications", [])
+    store.setdefault("bug_reports", [])
     if ensure_default_admin(store):
         write_store(store)
     return store
@@ -135,8 +139,21 @@ def sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
         "edad": user.get("edad"),
         "documento": user.get("documento"),
         "banned": bool(user.get("banned", False)),
+        "verified": user["role"] == "admin",
         "created_at": user["created_at"],
     }
+
+
+def build_dealer_rating(user_id: int, store: dict[str, Any]) -> dict[str, Any]:
+    ratings = []
+    for dealer in store["users"]:
+        for rating in dealer.get("ratings", []):
+            if dealer["id"] == user_id:
+                ratings.append(rating)
+    if not ratings:
+        return {"average": 0, "count": 0}
+    average = round(sum(item["score"] for item in ratings) / len(ratings), 1)
+    return {"average": average, "count": len(ratings)}
 
 
 def sanitize_message(message: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]:
@@ -147,6 +164,8 @@ def sanitize_message(message: dict[str, Any], store: dict[str, Any]) -> dict[str
         "sender_id": message["sender_id"],
         "sender_nombre": sender.get("apodo", sender["nombre"]) if sender else "Usuario",
         "sender_foto": sender.get("foto_perfil", "") if sender else "",
+        "sender_role": sender["role"] if sender else None,
+        "sender_verified": bool(sender and sender["role"] == "admin"),
         "content": message["content"],
         "created_at": message["created_at"],
     }
@@ -196,6 +215,7 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
                 if comment_author
                 else "Usuario",
                 "author_foto": comment_author.get("foto_perfil", "") if comment_author else "",
+                "author_verified": bool(comment_author and comment_author["role"] == "admin"),
                 "content": comment["content"],
                 "created_at": comment["created_at"],
             }
@@ -207,6 +227,7 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
         "author_nombre": author.get("apodo", author["nombre"]) if author else "Usuario",
         "author_role": author["role"] if author else None,
         "author_foto": author.get("foto_perfil", "") if author else "",
+        "verified": bool(author and author["role"] == "admin"),
         "content": post["content"],
         "created_at": post["created_at"],
         "reactions": {
@@ -234,6 +255,7 @@ def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
         "dealer_id": product["dealer_id"],
         "dealer_nombre": product["dealer_nombre"],
         "dealer_foto": product.get("dealer_foto", ""),
+        "dealer_verified": bool(product.get("dealer_verified", False)),
         "nombre": product["nombre"],
         "precio": product["precio"],
         "oferta_activa": oferta_activa,
@@ -241,6 +263,7 @@ def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
         "precio_mostrar": precio_oferta if oferta_activa and precio_oferta else product["precio"],
         "imagen": product["imagen"],
         "descripcion": product["descripcion"],
+        "dealer_rating": product.get("dealer_rating", {"average": 0, "count": 0}),
         "created_at": product["created_at"],
     }
 
@@ -258,6 +281,20 @@ def sanitize_notification(notification: dict[str, Any], store: dict[str, Any]) -
         "message_preview": notification.get("message_preview", ""),
         "read": bool(notification.get("read", False)),
         "created_at": notification["created_at"],
+    }
+
+
+def sanitize_report(report: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]:
+    author = next((user for user in store["users"] if user["id"] == report["author_id"]), None)
+    return {
+        "id": report["id"],
+        "author_id": report["author_id"],
+        "author_nombre": author.get("apodo", author["nombre"]) if author else "Usuario",
+        "author_foto": author.get("foto_perfil", "") if author else "",
+        "content": report["content"],
+        "imagen": report.get("imagen", ""),
+        "status": report.get("status", "nuevo"),
+        "created_at": report["created_at"],
     }
 
 
@@ -378,6 +415,7 @@ def register():
         "telefono": telefono,
         "edad": edad_int,
         "documento": documento,
+        "ratings": [],
         "password_hash": generate_password_hash(password),
         "accepted_terms": acepto_terminos,
         "banned": False,
@@ -456,6 +494,8 @@ def update_profile():
         if product["dealer_id"] == user["id"]:
             product["dealer_nombre"] = apodo
             product["dealer_foto"] = foto_perfil
+            product["dealer_rating"] = build_dealer_rating(user["id"], store)
+            product["dealer_verified"] = user["role"] == "admin"
 
     write_store(store)
     return jsonify({"mensaje": "Perfil actualizado", "user": sanitize_user(user)})
@@ -475,6 +515,126 @@ def list_users():
     ]
     users.sort(key=lambda item: (item["role"], item["nombre"].lower()))
     return jsonify(users)
+
+
+@app.get("/api/users/<int:user_id>")
+def get_user_profile(user_id: int):
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Sesion invalida", 401)
+
+    user = next((item for item in store["users"] if item["id"] == user_id), None)
+    if not user:
+        return bad_request("Usuario no encontrado", 404)
+
+    user_data = sanitize_user(user)
+    dealer_products = [
+        sanitize_product(product)
+        for product in sorted(store["products"], key=lambda item: item["id"], reverse=True)
+        if product["dealer_id"] == user_id
+    ]
+    if user["role"] == "dealer":
+        rating = build_dealer_rating(user_id, store)
+        my_rating = next(
+            (
+                item["score"]
+                for item in user.get("ratings", [])
+                if item["author_id"] == current_user["id"]
+            ),
+            None,
+        )
+    else:
+        rating = {"average": 0, "count": 0}
+        my_rating = None
+
+    return jsonify(
+        {
+            "user": user_data,
+            "products": dealer_products,
+            "rating": rating,
+            "my_rating": my_rating,
+        }
+    )
+
+
+@app.post("/api/dealers/<int:dealer_id>/ratings")
+def rate_dealer(dealer_id: int):
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Sesion invalida", 401)
+
+    dealer = next((item for item in store["users"] if item["id"] == dealer_id), None)
+    if not dealer or dealer["role"] != "dealer":
+        return bad_request("Dealer no encontrado", 404)
+    if current_user["id"] == dealer_id:
+        return bad_request("No puedes calificarte a ti mismo", 400)
+
+    data = request.get_json(silent=True) or {}
+    try:
+        score = int(data.get("score"))
+    except (TypeError, ValueError):
+        return bad_request("Calificacion invalida")
+    if score < 1 or score > 5:
+        return bad_request("La calificacion debe ser entre 1 y 5")
+
+    dealer.setdefault("ratings", [])
+    existing = next(
+        (item for item in dealer["ratings"] if item["author_id"] == current_user["id"]),
+        None,
+    )
+    if existing:
+        existing["score"] = score
+        existing["created_at"] = utc_now()
+    else:
+        dealer["ratings"].append(
+            {
+                "author_id": current_user["id"],
+                "score": score,
+                "created_at": utc_now(),
+            }
+        )
+
+    rating = build_dealer_rating(dealer_id, store)
+    for product in store["products"]:
+        if product["dealer_id"] == dealer_id:
+            product["dealer_rating"] = rating
+
+    write_store(store)
+    return jsonify({"mensaje": "Calificacion guardada", "rating": rating, "my_rating": score})
+
+
+@app.post("/api/reports")
+def create_report():
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Sesion invalida", 401)
+
+    data = request.get_json(silent=True) or {}
+    content = str(data.get("content", "")).strip()
+    imagen = str(data.get("imagen", "")).strip()
+    if not content or len(content) < 8:
+        return bad_request("Describe el problema con un poco mas de detalle")
+    if len(content) > 1200:
+        return bad_request("El reporte es demasiado largo")
+    if imagen and not (
+        imagen.startswith(("http://", "https://")) or imagen.startswith("data:image/")
+    ):
+        return bad_request("La imagen debe ser una URL valida o una imagen subida")
+
+    report = {
+        "id": next_id(store["bug_reports"]),
+        "author_id": current_user["id"],
+        "content": content,
+        "imagen": imagen,
+        "status": "nuevo",
+        "created_at": utc_now(),
+    }
+    store["bug_reports"].append(report)
+    write_store(store)
+    return jsonify({"mensaje": "Reporte enviado", "report": sanitize_report(report, store)}), 201
 
 
 @app.get("/api/notifications")
@@ -528,6 +688,20 @@ def admin_list_users():
     users = [sanitize_user(user) for user in store["users"] if user["id"] != admin_user["id"]]
     users.sort(key=lambda item: (item["banned"], item["role"], item["nombre"].lower()))
     return jsonify(users)
+
+
+@app.get("/api/admin/reports")
+def admin_list_reports():
+    store = read_store()
+    _, error_response = require_admin(store)
+    if error_response:
+        return error_response
+
+    reports = [
+        sanitize_report(report, store)
+        for report in sorted(store.get("bug_reports", []), key=lambda item: item["id"], reverse=True)
+    ]
+    return jsonify(reports)
 
 
 @app.post("/api/admin/users/<int:user_id>/ban")
@@ -639,6 +813,8 @@ def create_product():
         "dealer_id": user["id"],
         "dealer_nombre": user.get("apodo", user["nombre"]),
         "dealer_foto": user.get("foto_perfil", ""),
+        "dealer_rating": build_dealer_rating(user["id"], store),
+        "dealer_verified": user["role"] == "admin",
         "nombre": nombre,
         "precio": precio,
         "oferta_activa": oferta_activa,
@@ -689,6 +865,8 @@ def update_product(product_id: int):
     product["descripcion"] = descripcion
     product["oferta_activa"] = oferta_activa
     product["precio_oferta"] = precio_oferta
+    product["dealer_rating"] = build_dealer_rating(user["id"], store)
+    product["dealer_verified"] = user["role"] == "admin"
     write_store(store)
 
     return jsonify({"mensaje": "Producto actualizado", "product": sanitize_product(product)})

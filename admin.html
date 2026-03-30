@@ -18,6 +18,7 @@
       <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
       <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+      <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportes</button>
       <button class="secondary-btn" id="logoutBtn">Salir</button>
     </div>
   </header>
@@ -44,6 +45,17 @@
     <p id="estado" class="helper-text"></p>
     <div id="usersList" class="product-grid"></div>
   </section>
+
+  <section class="panel-card">
+    <div class="section-heading">
+      <div>
+        <h2>Reportes de bugs</h2>
+        <p class="helper-text">Aquí verás los errores o sugerencias que envíen los usuarios.</p>
+      </div>
+      <button class="secondary-btn" id="refreshReportsBtn">Actualizar reportes</button>
+    </div>
+    <div id="reportList" class="social-feed"></div>
+  </section>
 </div>
 
 <script>
@@ -56,6 +68,7 @@ if (!token || !currentUser || currentUser.role !== "admin") {
 }
 
 document.getElementById("refreshBtn").addEventListener("click", cargarUsuarios);
+document.getElementById("refreshReportsBtn").addEventListener("click", cargarReportes);
 document.getElementById("logoutBtn").addEventListener("click", cerrarSesion);
 
 function setEstado(message) {
@@ -85,6 +98,15 @@ function roleLabel(role) {
   return "Consumidor";
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getInitial(name) {
   return String(name || "?").trim().charAt(0).toUpperCase() || "?";
 }
@@ -97,7 +119,7 @@ function avatarMarkup(name, photo) {
 }
 
 function pintarCabecera() {
-  document.getElementById("adminName").textContent = currentUser.apodo || "ADM";
+  document.getElementById("adminName").innerHTML = `${currentUser.apodo || "ADM"} <span class="verified-check">✔</span>`;
   const avatar = document.getElementById("adminAvatar");
   if (currentUser.foto_perfil) {
     avatar.style.backgroundImage = `url("${currentUser.foto_perfil}")`;
@@ -158,6 +180,37 @@ async function cargarUsuarios() {
   }
 }
 
+async function cargarReportes() {
+  const list = document.getElementById("reportList");
+  list.innerHTML = "<p class='helper-text'>Cargando reportes...</p>";
+  try {
+    const reports = await api("/api/admin/reports");
+    if (!reports.length) {
+      list.innerHTML = "<p class='helper-text'>Aún no hay reportes enviados.</p>";
+      return;
+    }
+
+    list.innerHTML = reports.map((report) => `
+      <article class="social-post">
+        <div class="social-post-header">
+          <div class="identity-row">
+            ${avatarMarkup(report.author_nombre, report.author_foto)}
+            <div>
+              <strong>${escapeHtml(report.author_nombre)}</strong>
+              <small class="social-time">${new Date(report.created_at).toLocaleString()}</small>
+            </div>
+          </div>
+          <span class="badge-chip">${report.status}</span>
+        </div>
+        <p class="social-post-copy">${escapeHtml(report.content)}</p>
+        ${report.imagen ? `<img class="report-preview" src="${report.imagen}" alt="Imagen del reporte">` : ""}
+      </article>
+    `).join("");
+  } catch (error) {
+    list.innerHTML = `<p class='helper-text'>${error.message}</p>`;
+  }
+}
+
 async function cambiarEstadoUsuario(userId, action) {
   const label = action === "ban" ? "baneando" : "rehabilitando";
   setEstado(`Procesando, ${label} usuario...`);
@@ -183,6 +236,7 @@ async function cerrarSesion() {
 
 pintarCabecera();
 cargarUsuarios();
+cargarReportes();
 </script>
 
 </body>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Perfil público</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="store-shell">
+  <header class="store-header">
+    <div>
+      <h1>Perfil público</h1>
+      <p class="helper-text">Conoce mejor a la persona detrás del perfil, su actividad y, si es dealer, su reputación.</p>
+    </div>
+    <div class="store-actions">
+      <button class="secondary-btn" onclick="history.back()">Volver</button>
+      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+      <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+    </div>
+  </header>
+
+  <section class="panel-card profile-shell">
+    <div class="profile-preview">
+      <div id="userAvatar" class="profile-avatar large avatar-fallback"></div>
+      <div>
+        <h2 id="userName">Perfil</h2>
+        <p id="userRole" class="product-meta"></p>
+        <p id="userBio" class="helper-text"></p>
+        <p id="userMeta" class="helper-text"></p>
+      </div>
+    </div>
+    <div id="dealerRatingBox" class="rating-shell hidden">
+      <div class="rating-summary">
+        <strong id="dealerRatingSummary">Sin calificaciones todavía</strong>
+        <p id="dealerRatingMeta" class="helper-text"></p>
+      </div>
+      <div id="ratingActions" class="rating-actions hidden"></div>
+    </div>
+  </section>
+
+  <section id="dealerProductsSection" class="panel-card hidden">
+    <div class="section-heading">
+      <div>
+        <h2>Productos del dealer</h2>
+        <p class="helper-text">Vitrina pública del perfil que estás viendo.</p>
+      </div>
+    </div>
+    <div id="dealerProducts" class="productos-grid dense-grid"></div>
+  </section>
+</div>
+
+<script>
+const API_URL = window.location.origin;
+const token = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+const userId = Number(new URLSearchParams(window.location.search).get("id"));
+
+if (!token || !currentUser || !userId) {
+  window.location.href = "login.html";
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+function getInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function verifiedMark(user) {
+  return user?.verified ? ' <span class="verified-check">✔</span>' : "";
+}
+
+function roleLabel(role) {
+  if (role === "admin") return "Administrador";
+  if (role === "dealer") return "Dealer";
+  return "Consumidor";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderAvatar(user) {
+  const avatar = document.getElementById("userAvatar");
+  if (user.foto_perfil) {
+    avatar.style.backgroundImage = `url("${user.foto_perfil}")`;
+    avatar.textContent = "";
+    avatar.classList.remove("avatar-fallback");
+  } else {
+    avatar.style.backgroundImage = "";
+    avatar.textContent = getInitial(user.apodo || user.nombre);
+    avatar.classList.add("avatar-fallback");
+  }
+}
+
+async function calificar(score) {
+  try {
+    await api(`/api/dealers/${userId}/ratings`, {
+      method: "POST",
+      body: JSON.stringify({ score })
+    });
+    await cargarPerfil();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function renderRatingBox(user, rating, myRating) {
+  const box = document.getElementById("dealerRatingBox");
+  const actions = document.getElementById("ratingActions");
+  if (user.role !== "dealer") {
+    box.classList.add("hidden");
+    return;
+  }
+
+  box.classList.remove("hidden");
+  document.getElementById("dealerRatingSummary").textContent = rating.count
+    ? `Calificación promedio: ${rating.average} / 5`
+    : "Sin calificaciones todavía";
+  document.getElementById("dealerRatingMeta").textContent = rating.count
+    ? `${rating.count} valoraciones de la comunidad`
+    : "Sé la primera persona en valorar a este dealer.";
+
+  if (currentUser.id === user.id || currentUser.role === "admin") {
+    actions.classList.add("hidden");
+    actions.innerHTML = "";
+    return;
+  }
+
+  actions.classList.remove("hidden");
+  actions.innerHTML = [1, 2, 3, 4, 5].map((score) => `
+    <button class="secondary-btn rating-btn ${myRating === score ? "active" : ""}" onclick="calificar(${score})">
+      ${score}★
+    </button>
+  `).join("");
+}
+
+function renderProducts(products) {
+  const section = document.getElementById("dealerProductsSection");
+  const grid = document.getElementById("dealerProducts");
+  if (!products.length) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+  grid.innerHTML = products.map((product) => `
+    <article class="product-card compact-card">
+      <img src="${product.imagen}" alt="${escapeHtml(product.nombre)}">
+      <div class="product-copy">
+        <h3>${escapeHtml(product.nombre)}</h3>
+        <p>${escapeHtml(product.descripcion || "Sin descripción")}</p>
+        <div class="price-stack">
+          <strong>${escapeHtml(product.precio_mostrar || product.precio)}</strong>
+        </div>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function cargarPerfil() {
+  try {
+    const result = await api(`/api/users/${userId}`);
+    const { user, products, rating, my_rating } = result;
+    renderAvatar(user);
+    document.getElementById("userName").innerHTML = `${escapeHtml(user.apodo || user.nombre)}${verifiedMark(user)}`;
+    document.getElementById("userRole").textContent = roleLabel(user.role);
+    document.getElementById("userBio").textContent = user.bio || "Este usuario todavía no agregó una bio.";
+    document.getElementById("userMeta").textContent = user.role === "dealer"
+      ? `${products.length} productos publicados`
+      : "Perfil comunitario";
+    renderRatingBox(user, rating, my_rating);
+    renderProducts(products);
+  } catch (error) {
+    document.querySelector(".store-shell").innerHTML = `<section class="panel-card"><p class="helper-text">${error.message}</p></section>`;
+  }
+}
+
+cargarPerfil();
+</script>
+
+</body>
+</html>

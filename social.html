@@ -19,6 +19,7 @@
       <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
       <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+      <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportar bug</button>
     </div>
   </header>
 
@@ -86,6 +87,14 @@ function avatarMarkup(name, photo) {
     return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
   }
   return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function verifiedMark(user) {
+  return user?.verified ? ' <span class="verified-check">✔</span>' : "";
+}
+
+function openUserProfile(userId) {
+  window.location.href = `usuario.html?id=${userId}`;
 }
 
 function formatTime(value) {
@@ -199,9 +208,9 @@ async function cargarPosts() {
       <article class="social-post">
         <div class="social-post-header">
           <div class="identity-row">
-            ${avatarMarkup(post.author_nombre, post.author_foto)}
+            <span class="clickable-avatar" onclick="openUserProfile(${post.author_id})">${avatarMarkup(post.author_nombre, post.author_foto)}</span>
             <div>
-              <strong>${post.author_nombre}</strong>
+              <strong class="clickable-name" onclick="openUserProfile(${post.author_id})">${escapeHtml(post.author_nombre)}${verifiedMark(post)}</strong>
               <span class="product-meta">${post.author_role || "usuario"}</span>
               <small class="social-time">${formatTime(post.created_at)}</small>
             </div>
@@ -217,9 +226,9 @@ async function cargarPosts() {
           ${post.comments.map((comment) => `
             <div class="comment-item">
               <div class="identity-row">
-                ${avatarMarkup(comment.author_nombre, comment.author_foto)}
+                <span class="clickable-avatar" onclick="openUserProfile(${comment.author_id})">${avatarMarkup(comment.author_nombre, comment.author_foto)}</span>
                 <div>
-                  <strong>${comment.author_nombre}</strong>
+                  <strong class="clickable-name" onclick="openUserProfile(${comment.author_id})">${escapeHtml(comment.author_nombre)}${comment.author_verified ? ' <span class="verified-check">✔</span>' : ""}</strong>
                   <small class="social-time">${formatTime(comment.created_at)}</small>
                 </div>
               </div>

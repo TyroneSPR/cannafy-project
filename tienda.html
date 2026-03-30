@@ -45,6 +45,7 @@
           <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
           <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
           <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+          <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportar bug</button>
           <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
           <button onclick="cerrarSesion()">Cerrar sesión</button>
         </div>
@@ -168,6 +169,14 @@ function avatarMarkup(name, photo) {
     return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
   }
   return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function verifiedMark(isVerified) {
+  return isVerified ? ' <span class="verified-check">✔</span>' : "";
+}
+
+function openUserProfile(userId) {
+  window.location.href = `usuario.html?id=${userId}`;
 }
 
 function escapeHtml(value) {
@@ -379,12 +388,13 @@ function renderProductos() {
         <img src="${producto.imagen}" alt="${producto.nombre}">
       </button>
       <div class="product-copy">
-        <span class="product-meta">por ${producto.dealer_nombre}</span>
+        <span class="product-meta clickable-name" onclick="openUserProfile(${producto.dealer_id})">por ${escapeHtml(producto.dealer_nombre)}${verifiedMark(producto.dealer_verified)}</span>
         <h3>${producto.nombre}</h3>
         <p>${producto.descripcion || "Sin descripción"}</p>
         <div class="price-stack">
           <strong>${producto.precio_mostrar || producto.precio}</strong>
           ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
+          ${(producto.dealer_rating?.count || 0) ? `<span class="product-meta">★ ${producto.dealer_rating.average} (${producto.dealer_rating.count})</span>` : ""}
         </div>
       </div>
       <div class="card-actions">
@@ -403,7 +413,7 @@ async function verDetalle(productId) {
 
   document.getElementById("modalTitle").textContent = producto.nombre;
   document.getElementById("modalImage").src = producto.imagen;
-  document.getElementById("modalDealer").textContent = `Dealer: ${producto.dealer_nombre}`;
+  document.getElementById("modalDealer").innerHTML = `Dealer: <span class="clickable-name" onclick="openUserProfile(${producto.dealer_id})">${escapeHtml(producto.dealer_nombre)}${verifiedMark(producto.dealer_verified)}</span>`;
   document.getElementById("modalDescription").textContent = producto.descripcion || "Sin descripción.";
   document.getElementById("modalPrice").textContent = producto.precio_mostrar || producto.precio;
   document.getElementById("productModal").classList.remove("hidden");

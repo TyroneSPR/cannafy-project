@@ -30,6 +30,15 @@ if (savedEmail) {
 }
 
 document.getElementById("btnLogin").addEventListener("click", login);
+document.getElementById("correo").addEventListener("keydown", handleEnterLogin);
+document.getElementById("password").addEventListener("keydown", handleEnterLogin);
+
+function handleEnterLogin(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    login();
+  }
+}
 
 async function login() {
   const correo = document.getElementById("correo").value.trim();

@@ -72,6 +72,7 @@ if (!token || !currentUser) {
 }
 
 document.getElementById("sendBtn").addEventListener("click", enviarMensaje);
+document.getElementById("messageInput").addEventListener("keydown", manejarEnterMensaje);
 if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission().catch(() => {});
 }
@@ -102,6 +103,22 @@ function avatarMarkup(name, photo) {
     return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
   }
   return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function userLabelMarkup(user) {
+  const name = user.apodo || user.nombre || "Usuario";
+  return `${escapeHtml(name)}${user.verified ? ' <span class="verified-check">✔</span>' : ""}`;
+}
+
+function openUserProfile(userId) {
+  window.location.href = `usuario.html?id=${userId}`;
+}
+
+function manejarEnterMensaje(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    enviarMensaje();
+  }
 }
 
 function escapeHtml(value) {
@@ -252,8 +269,8 @@ async function cargarUsuarios() {
     ${users.map((user) => `
       <button class="user-chip" onclick="crearOAbrirChat(${user.id})">
         <span class="identity-row">
-          ${avatarMarkup(user.apodo || user.nombre, user.foto_perfil)}
-          <span>${user.apodo || user.nombre}</span>
+          <span class="clickable-avatar" onclick="event.stopPropagation(); openUserProfile(${user.id})">${avatarMarkup(user.apodo || user.nombre, user.foto_perfil)}</span>
+          <span class="clickable-name" onclick="event.stopPropagation(); openUserProfile(${user.id})">${userLabelMarkup(user)}</span>
         </span>
         <small>${user.role}</small>
       </button>
@@ -279,7 +296,7 @@ async function cargarConversaciones() {
         ${conversations.map((conversation) => `
           <button class="conversation-item ${conversation.id === activeConversationId ? "selected" : ""}" onclick="abrirConversacion(${conversation.id}, '${(conversation.other_user.apodo || conversation.other_user.nombre).replace(/'/g, "\\'")}')">
             <div class="conversation-line">
-              <strong>${conversation.other_user.apodo || conversation.other_user.nombre}</strong>
+              <strong class="clickable-name" onclick="event.stopPropagation(); openUserProfile(${conversation.other_user.id})">${userLabelMarkup(conversation.other_user)}</strong>
               ${conversation.unread_count ? `<span class="mini-badge">${conversation.unread_count}</span>` : ""}
             </div>
             <small>${conversation.last_message ? conversation.last_message.content : "Sin mensajes todavía"}</small>
@@ -345,8 +362,8 @@ async function cargarMensajes() {
       <article class="message-bubble ${message.sender_id === currentUser.id ? "own" : ""}">
         <div class="message-head">
           <span class="identity-row">
-            ${avatarMarkup(message.sender_nombre, message.sender_foto)}
-            <span class="product-meta">${message.sender_nombre}</span>
+            <span class="clickable-avatar" onclick="openUserProfile(${message.sender_id})">${avatarMarkup(message.sender_nombre, message.sender_foto)}</span>
+            <span class="product-meta clickable-name" onclick="openUserProfile(${message.sender_id})">${escapeHtml(message.sender_nombre)}${message.sender_verified ? ' <span class="verified-check">✔</span>' : ""}</span>
           </span>
           <time class="message-time">${formatTime(message.created_at)}</time>
         </div>
