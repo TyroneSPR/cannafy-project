@@ -8,58 +8,101 @@
 </head>
 <body class="dashboard-page">
 
-<div class="dashboard-shell">
-  <aside class="sidebar">
-    <h2>Cannafy</h2>
-    <p id="dealerInfo" class="sidebar-copy"></p>
+<div class="market-shell">
+  <header class="market-topbar">
+    <div class="brand-lockup">
+      <span class="brand-mark">C</span>
+      <div>
+        <strong>Cannafy Dealer</strong>
+        <p id="dealerInfo" class="micro-copy"></p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="secondary-btn warm-btn" onclick="toggleComposer()">Registrar producto</button>
+      <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
+    </div>
+  </header>
+
+  <div id="quickMenu" class="quick-menu hidden">
     <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
-    <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca de nosotros</button>
-    <button class="secondary-btn" onclick="window.location.href='tienda.html'">Ver tienda pública</button>
+    <button class="secondary-btn" onclick="window.location.href='tienda.html'">Explorar tienda</button>
     <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
     <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+    <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
     <button onclick="cerrarSesion()">Cerrar sesión</button>
-  </aside>
+  </div>
 
-  <main class="dashboard-main">
-    <section class="panel-card">
-      <h1>Publicar producto</h1>
-      <p>Sube productos a la vitrina para que los consumidores los encuentren.</p>
-
-      <div class="form-grid">
-        <input type="text" id="nombre" placeholder="Nombre del producto">
-        <input type="text" id="precio" placeholder="Precio">
-        <input type="text" id="descripcion" placeholder="Descripción corta">
-        <input type="url" id="imagen" placeholder="URL de imagen (opcional)">
+  <section class="hero-market dealer-hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Panel cálido y flexible</span>
+      <h1>No te soltamos directo al formulario. Primero te ubicamos, luego publicas.</h1>
+      <p>Revisa tu vitrina, entiende el ritmo de tu tienda y después abre el panel de publicación cuando quieras.</p>
+      <div class="hero-actions">
+        <button onclick="toggleComposer()">Publicar ahora</button>
+        <button class="secondary-btn" onclick="scrollToProducts()">Ver mi vitrina</button>
       </div>
+    </div>
+    <div class="hero-showcase">
+      <article class="spotlight-card accent-card">
+        <span class="eyebrow">Catálogo</span>
+        <h3>Gestiona productos con menos ruido</h3>
+        <p>Edita, oferta y elimina sin sentir el panel pesado.</p>
+      </article>
+      <article class="spotlight-card">
+        <span class="eyebrow">Relación</span>
+        <h3>Conversa antes de vender</h3>
+        <p>Mensajes y comunidad integrados para una experiencia más cercana.</p>
+      </article>
+    </div>
+  </section>
 
-      <div class="offer-row">
-        <label class="checkbox-row compact-check">
-          <input type="checkbox" id="ofertaActiva">
-          <span>Activar oferta</span>
-        </label>
-        <input type="text" id="precioOferta" placeholder="Precio en oferta (opcional)">
+  <section id="composerCard" class="panel-card hidden composer-card">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Nueva publicación</span>
+        <h2>Registrar producto</h2>
       </div>
+      <button class="secondary-btn" onclick="toggleComposer()">Cerrar</button>
+    </div>
 
-      <div class="upload-row">
-        <input type="file" id="imagenArchivo" accept="image/*">
-        <div class="image-preview-shell">
-          <img id="previewImagen" class="image-preview" alt="Vista previa del producto">
-          <p id="previewHint" class="helper-text">La miniatura se recortará a formato cuadrado automáticamente.</p>
-        </div>
+    <div class="form-grid">
+      <input type="text" id="nombre" placeholder="Nombre del producto">
+      <input type="text" id="precio" placeholder="Precio">
+      <input type="text" id="descripcion" placeholder="Descripción corta">
+      <input type="url" id="imagen" placeholder="URL de imagen (opcional)">
+    </div>
+
+    <div class="offer-row">
+      <label class="checkbox-row compact-check">
+        <input type="checkbox" id="ofertaActiva">
+        <span>Activar oferta</span>
+      </label>
+      <input type="text" id="precioOferta" placeholder="Precio en oferta (opcional)">
+    </div>
+
+    <div class="upload-row">
+      <input type="file" id="imagenArchivo" accept="image/*">
+      <div class="image-preview-shell">
+        <img id="previewImagen" class="image-preview" alt="Vista previa del producto">
+        <p id="previewHint" class="helper-text">La miniatura se recortará automáticamente en formato cuadrado.</p>
       </div>
+    </div>
 
-      <button id="btnGuardar">Publicar producto</button>
-      <p id="estado" class="helper-text"></p>
-    </section>
+    <button id="btnGuardar">Publicar producto</button>
+    <p id="estado" class="helper-text"></p>
+  </section>
 
-    <section class="panel-card">
-      <div class="panel-header">
-        <h2>Mis publicaciones</h2>
-        <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
+  <section id="dealerProducts" class="market-section">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Mi vitrina</span>
+        <h2>Productos publicados</h2>
       </div>
-      <div id="productos" class="productos-grid"></div>
-    </section>
-  </main>
+      <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
+    </div>
+    <div id="productos" class="productos-grid dense-grid"></div>
+  </section>
 </div>
 
 <script>
@@ -72,10 +115,22 @@ if (!token || !currentUser || currentUser.role !== "dealer") {
   window.location.href = "login.html";
 }
 
-document.getElementById("dealerInfo").textContent = `${currentUser.nombre} · ${currentUser.correo}`;
+document.getElementById("dealerInfo").textContent = `${currentUser.apodo || currentUser.nombre} · ${currentUser.correo}`;
 document.getElementById("btnGuardar").addEventListener("click", crearProducto);
 document.getElementById("imagenArchivo").addEventListener("change", cargarArchivoImagen);
 document.getElementById("imagen").addEventListener("input", actualizarPreviewDesdeUrl);
+
+function toggleMenu() {
+  document.getElementById("quickMenu").classList.toggle("hidden");
+}
+
+function toggleComposer() {
+  document.getElementById("composerCard").classList.toggle("hidden");
+}
+
+function scrollToProducts() {
+  document.getElementById("dealerProducts").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 async function cargarArchivoImagen(event) {
   const archivo = event.target.files[0];
@@ -107,13 +162,13 @@ function actualizarPreview(src) {
   if (!src) {
     preview.removeAttribute("src");
     preview.style.display = "none";
-    hint.textContent = "La miniatura se recortará a formato cuadrado automáticamente.";
+    hint.textContent = "La miniatura se recortará automáticamente en formato cuadrado.";
     return;
   }
 
   preview.src = src;
   preview.style.display = "block";
-  hint.textContent = "Vista previa cuadrada del producto.";
+  hint.textContent = "Vista previa lista para la vitrina.";
 }
 
 async function crearProducto() {
@@ -141,7 +196,6 @@ async function crearProducto() {
     });
 
     const result = await response.json();
-
     if (!response.ok) {
       estado.textContent = result.error || "No se pudo publicar.";
       return;
@@ -158,6 +212,7 @@ async function crearProducto() {
     imagenArchivoBase64 = "";
     actualizarPreview("");
     cargarProductos();
+    toggleComposer();
   } catch (error) {
     estado.textContent = "No se pudo conectar con la API.";
   }
@@ -173,12 +228,12 @@ async function cargarProductos() {
     const propios = productos.filter((item) => item.dealer_id === currentUser.id);
 
     if (!propios.length) {
-      contenedor.innerHTML = "<p class='helper-text'>Aún no has publicado productos.</p>";
+      contenedor.innerHTML = "<p class='helper-text'>Todavía no has publicado productos. Usa el botón de registrar producto cuando estés listo.</p>";
       return;
     }
 
     contenedor.innerHTML = propios.map((producto) => `
-      <article class="product-card">
+      <article class="product-card compact-card dealer-card">
         <img src="${producto.imagen}" alt="${producto.nombre}">
         <div class="product-copy">
           <input id="nombre-${producto.id}" type="text" value="${escapeHtml(producto.nombre)}" placeholder="Nombre">
@@ -194,7 +249,7 @@ async function cargarProductos() {
             ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
           </div>
         </div>
-        <div class="card-actions dealer-actions">
+        <div class="card-actions">
           <button onclick="guardarCambios(${producto.id})">Guardar</button>
           <button class="secondary-btn" onclick="eliminarProducto(${producto.id})">Eliminar</button>
         </div>

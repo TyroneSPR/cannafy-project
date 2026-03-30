@@ -3,39 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cannafy | Tienda</title>
+  <title>Cannafy | Explorar</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
 
-<div class="store-shell">
-  <header class="store-header">
-    <div>
-      <h1>Cannafy</h1>
-      <p id="bienvenida" class="helper-text"></p>
+<div class="market-shell">
+  <header class="market-topbar">
+    <div class="brand-lockup">
+      <span class="brand-mark">C</span>
+      <div>
+        <strong>Cannafy</strong>
+        <p id="bienvenida" class="micro-copy"></p>
+      </div>
     </div>
-    <div class="store-actions">
-      <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
-      <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
-      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
-      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
-      <button class="secondary-btn" onclick="toggleCart()">Carrito <span id="cartCount">0</span></button>
-      <button class="secondary-btn" onclick="window.location.href='rol.html'">Nuevo registro</button>
-      <button onclick="cerrarSesion()">Cerrar sesión</button>
+
+    <div class="topbar-actions">
+      <div class="search-shell">
+        <input id="busqueda" type="text" placeholder="Buscar productos, dealers o ideas">
+      </div>
+      <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
     </div>
   </header>
 
-  <section class="store-hero">
-    <h2>Explora productos publicados por dealers</h2>
-    <p>Ahora puedes ver cada producto en detalle, agregarlo al carrito y contactar directo con el dealer.</p>
+  <div id="quickMenu" class="quick-menu hidden">
+    <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
+    <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+    <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+    <button class="secondary-btn" onclick="toggleCart()">Carrito <span id="cartCount">0</span></button>
+    <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
+    <button onclick="cerrarSesion()">Cerrar sesión</button>
+  </div>
+
+  <section class="hero-market">
+    <div class="hero-copy">
+      <span class="eyebrow">Marketplace social</span>
+      <h1>Explora con calma, descubre productos y conversa antes de decidir</h1>
+      <p>La idea no es empujarte a comprar de inmediato. Queremos que la experiencia se sienta más humana, visual y clara.</p>
+      <div class="hero-actions">
+        <button onclick="scrollToProducts()">Ver productos</button>
+        <button class="secondary-btn" onclick="window.location.href='social.html'">Entrar a comunidad</button>
+      </div>
+    </div>
+    <div class="hero-showcase">
+      <article class="spotlight-card accent-card">
+        <span class="eyebrow">Explora</span>
+        <h3>Productos ordenados y con foco visual</h3>
+        <p>Menos ruido, más claridad y tarjetas compactas.</p>
+      </article>
+      <article class="spotlight-card">
+        <span class="eyebrow">Conecta</span>
+        <h3>Chat directo con dealers</h3>
+        <p>Consulta antes de comprar y coordina mejor.</p>
+      </article>
+      <article class="spotlight-card">
+        <span class="eyebrow">Comunidad</span>
+        <h3>Zona social integrada</h3>
+        <p>Comparte ideas, conversa y conoce gente del rubro.</p>
+      </article>
+    </div>
   </section>
 
-  <section class="panel-card">
-    <div class="panel-header">
-      <h2>Productos disponibles</h2>
+  <section class="feature-strip">
+    <article class="feature-pill">
+      <strong>Compra con contexto</strong>
+      <span>detalle, carrito y contacto directo</span>
+    </article>
+    <article class="feature-pill">
+      <strong>Ofertas visibles</strong>
+      <span>precio normal y promocional bien diferenciados</span>
+    </article>
+    <article class="feature-pill">
+      <strong>Perfiles reales</strong>
+      <span>apodo, bio y foto para una experiencia más cercana</span>
+    </article>
+  </section>
+
+  <section id="productSection" class="market-section">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Catálogo</span>
+        <h2>Productos destacados</h2>
+      </div>
       <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
     </div>
-    <div id="productos" class="productos-grid"></div>
+    <div id="productos" class="productos-grid dense-grid"></div>
   </section>
 </div>
 
@@ -74,13 +126,23 @@
 const API_URL = window.location.origin;
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let selectedProduct = null;
+let allProducts = [];
 let cart = JSON.parse(localStorage.getItem("cart") || "[]");
 
 if (!currentUser) {
   window.location.href = "login.html";
 }
 
-document.getElementById("bienvenida").textContent = `Sesión activa: ${currentUser.nombre} (${currentUser.role})`;
+document.getElementById("bienvenida").textContent = `${currentUser.apodo || currentUser.nombre} · ${currentUser.role}`;
+document.getElementById("busqueda").addEventListener("input", renderProductos);
+
+function toggleMenu() {
+  document.getElementById("quickMenu").classList.toggle("hidden");
+}
+
+function scrollToProducts() {
+  document.getElementById("productSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 function saveCart() {
   localStorage.setItem("cart", JSON.stringify(cart));
@@ -107,7 +169,7 @@ function renderCart() {
       <img src="${item.imagen}" alt="${item.nombre}">
       <div>
         <strong>${item.nombre}</strong>
-        <p>${item.precio}</p>
+        <p>${item.precio_mostrar || item.precio}</p>
         <small>${item.dealer_nombre}</small>
       </div>
       <button class="secondary-btn" onclick="quitarDelCarrito(${index})">Quitar</button>
@@ -130,36 +192,46 @@ async function cargarProductos() {
 
   try {
     const response = await fetch(`${API_URL}/api/products`);
-    const productos = await response.json();
-
-    if (!productos.length) {
-      contenedor.innerHTML = "<p class='helper-text'>Todavía no hay productos publicados.</p>";
-      return;
-    }
-
-    contenedor.innerHTML = productos.map((producto) => `
-      <article class="product-card">
-        <button class="product-image-button" onclick="verDetalle(${producto.id})">
-          <img src="${producto.imagen}" alt="${producto.nombre}">
-        </button>
-        <div class="product-copy">
-          <span class="product-meta">Publicado por ${producto.dealer_nombre}</span>
-          <h3>${producto.nombre}</h3>
-          <p>${producto.descripcion || "Sin descripción"}</p>
-          <div class="price-stack">
-            <strong>${producto.precio_mostrar || producto.precio}</strong>
-            ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
-          </div>
-        </div>
-        <div class="card-actions">
-          <button onclick="verDetalle(${producto.id})">Ver más</button>
-          <button class="secondary-btn" onclick="agregarDesdeListado(${producto.id})">Agregar al carrito</button>
-        </div>
-      </article>
-    `).join("");
+    allProducts = await response.json();
+    renderProductos();
   } catch (error) {
     contenedor.innerHTML = "<p class='helper-text'>No se pudieron cargar los productos.</p>";
   }
+}
+
+function renderProductos() {
+  const contenedor = document.getElementById("productos");
+  const query = document.getElementById("busqueda").value.trim().toLowerCase();
+  const productos = allProducts.filter((producto) => {
+    const haystack = `${producto.nombre} ${producto.dealer_nombre} ${producto.descripcion || ""}`.toLowerCase();
+    return haystack.includes(query);
+  });
+
+  if (!productos.length) {
+    contenedor.innerHTML = "<p class='helper-text'>No encontramos productos con esa búsqueda.</p>";
+    return;
+  }
+
+  contenedor.innerHTML = productos.map((producto) => `
+    <article class="product-card compact-card">
+      <button class="product-image-button" onclick="verDetalle(${producto.id})">
+        <img src="${producto.imagen}" alt="${producto.nombre}">
+      </button>
+      <div class="product-copy">
+        <span class="product-meta">por ${producto.dealer_nombre}</span>
+        <h3>${producto.nombre}</h3>
+        <p>${producto.descripcion || "Sin descripción"}</p>
+        <div class="price-stack">
+          <strong>${producto.precio_mostrar || producto.precio}</strong>
+          ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
+        </div>
+      </div>
+      <div class="card-actions">
+        <button onclick="verDetalle(${producto.id})">Ver</button>
+        <button class="secondary-btn" onclick="agregarDesdeListado(${producto.id})">Carrito</button>
+      </div>
+    </article>
+  `).join("");
 }
 
 async function verDetalle(productId) {
@@ -205,7 +277,7 @@ function contactarDealerActual() {
     return;
   }
   localStorage.setItem("chatRecipientId", String(selectedProduct.dealer_id));
-  localStorage.setItem("chatDraft", `Hola, me interesa este producto: ${selectedProduct.nombre} (${selectedProduct.precio}).`);
+  localStorage.setItem("chatDraft", `Hola, me interesa este producto: ${selectedProduct.nombre} (${selectedProduct.precio_mostrar || selectedProduct.precio}).`);
   window.location.href = "chat.html";
 }
 
@@ -216,7 +288,7 @@ function comprarDirecto() {
 
   const dealerId = cart[0].dealer_id;
   const sameDealer = cart.every((item) => item.dealer_id === dealerId);
-  const resumen = cart.map((item) => `- ${item.nombre} | ${item.precio}`).join("\n");
+  const resumen = cart.map((item) => `- ${item.nombre} | ${item.precio_mostrar || item.precio}`).join("\n");
 
   if (!sameDealer) {
     alert("Por ahora el carrito solo puede cerrarse con productos de un mismo dealer. Limpia el carrito o agrupa por vendedor.");
@@ -224,10 +296,7 @@ function comprarDirecto() {
   }
 
   localStorage.setItem("chatRecipientId", String(dealerId));
-  localStorage.setItem(
-    "chatDraft",
-    `Hola, quiero comprar estos productos:\n${resumen}\n\n¿Podemos coordinar la compra directa?`
-  );
+  localStorage.setItem("chatDraft", `Hola, quiero comprar estos productos:\n${resumen}\n\n¿Podemos coordinar la compra directa?`);
   window.location.href = "chat.html";
 }
 
