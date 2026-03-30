@@ -135,6 +135,7 @@ body.dashboard-page {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 .search-shell {
@@ -155,7 +156,9 @@ body.dashboard-page {
 }
 
 .quick-menu {
-  justify-self: end;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
   width: min(260px, 100%);
   display: grid;
   gap: 8px;
@@ -165,6 +168,11 @@ body.dashboard-page {
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   animation: fade-up 0.22s ease;
+  z-index: 40;
+}
+
+.menu-anchor {
+  position: relative;
 }
 
 .hero-market {

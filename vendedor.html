@@ -20,18 +20,19 @@
 
     <div class="topbar-actions">
       <button class="secondary-btn warm-btn" onclick="toggleComposer()">Registrar producto</button>
-      <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
+      <div class="menu-anchor">
+        <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
+        <div id="quickMenu" class="quick-menu hidden">
+          <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
+          <button class="secondary-btn" onclick="window.location.href='tienda.html'">Explorar tienda</button>
+          <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+          <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+          <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
+          <button onclick="cerrarSesion()">Cerrar sesión</button>
+        </div>
+      </div>
     </div>
   </header>
-
-  <div id="quickMenu" class="quick-menu hidden">
-    <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
-    <button class="secondary-btn" onclick="window.location.href='tienda.html'">Explorar tienda</button>
-    <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
-    <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
-    <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
-    <button onclick="cerrarSesion()">Cerrar sesión</button>
-  </div>
 
   <section class="hero-market dealer-hero">
     <div class="hero-copy">
@@ -339,6 +340,14 @@ function escapeHtml(value) {
 }
 
 cargarProductos();
+
+document.addEventListener("click", (event) => {
+  const menu = document.getElementById("quickMenu");
+  const anchor = document.querySelector(".menu-anchor");
+  if (!anchor.contains(event.target)) {
+    menu.classList.add("hidden");
+  }
+});
 </script>
 
 </body>
