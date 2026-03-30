@@ -50,6 +50,7 @@ const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let activeConversationId = null;
 let isRefreshingConversations = false;
+let pollHandle = null;
 
 if (!token || !currentUser) {
   window.location.href = "login.html";
@@ -184,6 +185,22 @@ async function cargarMensajes() {
   }
 }
 
+function startPolling() {
+  if (pollHandle) {
+    clearInterval(pollHandle);
+  }
+
+  pollHandle = setInterval(async () => {
+    try {
+      await cargarConversaciones();
+      if (activeConversationId) {
+        await cargarMensajes();
+      }
+    } catch (error) {
+    }
+  }, 3000);
+}
+
 async function enviarMensaje() {
   const input = document.getElementById("messageInput");
   const content = input.value.trim();
@@ -234,7 +251,14 @@ async function refreshAll() {
     document.getElementById("messageInput").value = draft;
     localStorage.removeItem("chatDraft");
   }
+  startPolling();
 })();
+
+window.addEventListener("beforeunload", () => {
+  if (pollHandle) {
+    clearInterval(pollHandle);
+  }
+});
 </script>
 
 </body>
