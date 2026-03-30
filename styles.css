@@ -116,6 +116,36 @@ body.dashboard-page {
   padding: 24px;
 }
 
+.profile-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-preview {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+}
+
+.profile-avatar.large {
+  width: 110px;
+  height: 110px;
+}
+
+.profile-avatar.empty::after {
+  content: "";
+}
+
 .store-header {
   display: flex;
   justify-content: space-between;
@@ -606,6 +636,12 @@ textarea {
   margin-bottom: 10px;
 }
 
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .comment-list {
   display: grid;
   gap: 10px;
@@ -664,7 +700,8 @@ textarea {
   .upload-row,
   .card-actions,
   .detail-actions,
-  .product-detail {
+  .product-detail,
+  .profile-preview {
     grid-template-columns: 1fr;
   }
 

@@ -4,6 +4,9 @@
       "id": 1,
       "role": "dealer",
       "nombre": "Tyrone",
+      "apodo": "Tyrone",
+      "bio": "",
+      "foto_perfil": "",
       "correo": "prueba2@gmail.com",
       "telefono": "+51926338291",
       "edad": 19,
@@ -16,6 +19,9 @@
       "id": 2,
       "role": "dealer",
       "nombre": "Deysi Chakala",
+      "apodo": "Deysi Chakala",
+      "bio": "",
+      "foto_perfil": "",
       "correo": "test@gmail.com",
       "telefono": "+51999999999",
       "edad": 19,
@@ -30,6 +36,7 @@
       "id": 1,
       "dealer_id": 2,
       "dealer_nombre": "Deysi Chakala",
+      "dealer_foto": "",
       "nombre": "Dildo",
       "precio": "50",
       "oferta_activa": false,
@@ -46,9 +53,9 @@
       "created_at": "2026-03-30T02:31:39.225225+00:00"
     },
     {
-      "token": "5973ee792484a693b82b5526a00d4911d9bf77dcc58cade4",
+      "token": "7d3e00f22917a64d7c951bd37aa302e09f77b5936517f288",
       "user_id": 2,
-      "created_at": "2026-03-30T02:54:59.460759+00:00"
+      "created_at": "2026-03-30T03:22:46.264468+00:00"
     }
   ],
   "conversations": [
@@ -65,9 +72,16 @@
           "sender_id": 2,
           "content": "hola a cuanto?",
           "created_at": "2026-03-30T03:16:09.981247+00:00"
+        },
+        {
+          "id": 2,
+          "conversation_id": 1,
+          "sender_id": 2,
+          "content": "Hola, quiero comprar estos productos:\n- Dildo | 50\n\n¿Podemos coordinar la compra directa?",
+          "created_at": "2026-03-30T03:23:19.822037+00:00"
         }
       ],
-      "updated_at": "2026-03-30T03:16:09.981247+00:00"
+      "updated_at": "2026-03-30T03:23:19.822037+00:00"
     }
   ],
   "posts": []

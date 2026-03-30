@@ -25,6 +25,7 @@
         <p id="chatTitle" class="helper-text">Selecciona una persona para abrir una conversación.</p>
       </div>
       <div class="store-actions">
+        <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
         <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
         <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
       </div>
@@ -85,7 +86,10 @@ async function cargarUsuarios() {
     <h3 class="section-label">Iniciar chat</h3>
     ${users.map((user) => `
       <button class="user-chip" onclick="crearOAbrirChat(${user.id})">
-        <span>${user.nombre}</span>
+        <span class="identity-row">
+          <img class="profile-avatar" src="${user.foto_perfil || ''}" alt="${user.apodo || user.nombre}" onerror="this.style.visibility='hidden'">
+          <span>${user.apodo || user.nombre}</span>
+        </span>
         <small>${user.role}</small>
       </button>
     `).join("")}
@@ -109,7 +113,7 @@ async function cargarConversaciones() {
         <h3 class="section-label">Chats activos</h3>
         ${conversations.map((conversation) => `
           <button class="conversation-item ${conversation.id === activeConversationId ? "selected" : ""}" onclick="abrirConversacion(${conversation.id}, '${conversation.other_user.nombre.replace(/'/g, "\\'")}')">
-            <strong>${conversation.other_user.nombre}</strong>
+            <strong>${conversation.other_user.apodo || conversation.other_user.nombre}</strong>
             <small>${conversation.last_message ? conversation.last_message.content : "Sin mensajes todavía"}</small>
           </button>
         `).join("")}
@@ -166,7 +170,10 @@ async function cargarMensajes() {
 
     container.innerHTML = messages.map((message) => `
       <article class="message-bubble ${message.sender_id === currentUser.id ? "own" : ""}">
-        <span class="product-meta">${message.sender_nombre}</span>
+        <span class="identity-row">
+          <img class="profile-avatar" src="${message.sender_foto || ''}" alt="${message.sender_nombre}" onerror="this.style.visibility='hidden'">
+          <span class="product-meta">${message.sender_nombre}</span>
+        </span>
         <p>${message.content}</p>
       </article>
     `).join("");

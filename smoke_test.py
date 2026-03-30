@@ -47,6 +47,17 @@ def main() -> None:
     token = login.json["token"]
     buyer_id = consumer_register.json["user"]["id"]
 
+    profile = client.put(
+        "/api/auth/profile",
+        json={
+            "apodo": "dealer-profile",
+            "bio": "Perfil de prueba",
+            "foto_perfil": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WnQx7kAAAAASUVORK5CYII=",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    print("profile", profile.status_code)
+
     product = client.post(
         "/api/products",
         json={

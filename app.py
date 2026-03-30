@@ -58,6 +58,9 @@ def sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
         "id": user["id"],
         "role": user["role"],
         "nombre": user["nombre"],
+        "apodo": user.get("apodo", user["nombre"]),
+        "bio": user.get("bio", ""),
+        "foto_perfil": user.get("foto_perfil", ""),
         "correo": user["correo"],
         "telefono": user.get("telefono"),
         "edad": user.get("edad"),
@@ -72,7 +75,8 @@ def sanitize_message(message: dict[str, Any], store: dict[str, Any]) -> dict[str
         "id": message["id"],
         "conversation_id": message["conversation_id"],
         "sender_id": message["sender_id"],
-        "sender_nombre": sender["nombre"] if sender else "Usuario",
+        "sender_nombre": sender.get("apodo", sender["nombre"]) if sender else "Usuario",
+        "sender_foto": sender.get("foto_perfil", "") if sender else "",
         "content": message["content"],
         "created_at": message["created_at"],
     }
@@ -108,17 +112,19 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
             {
                 "id": comment["id"],
                 "author_id": comment["author_id"],
-                "author_nombre": comment_author["nombre"] if comment_author else "Usuario",
-                "content": comment["content"],
-                "created_at": comment["created_at"],
-            }
+        "author_nombre": comment_author.get("apodo", comment_author["nombre"]) if comment_author else "Usuario",
+        "author_foto": comment_author.get("foto_perfil", "") if comment_author else "",
+        "content": comment["content"],
+        "created_at": comment["created_at"],
+    }
         )
 
     return {
         "id": post["id"],
         "author_id": post["author_id"],
-        "author_nombre": author["nombre"] if author else "Usuario",
+        "author_nombre": author.get("apodo", author["nombre"]) if author else "Usuario",
         "author_role": author["role"] if author else None,
+        "author_foto": author.get("foto_perfil", "") if author else "",
         "content": post["content"],
         "created_at": post["created_at"],
         "comments": comments,
@@ -132,6 +138,7 @@ def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
         "id": product["id"],
         "dealer_id": product["dealer_id"],
         "dealer_nombre": product["dealer_nombre"],
+        "dealer_foto": product.get("dealer_foto", ""),
         "nombre": product["nombre"],
         "precio": product["precio"],
         "oferta_activa": oferta_activa,
@@ -229,6 +236,9 @@ def register():
         "id": next_id(store["users"]),
         "role": role,
         "nombre": nombre,
+        "apodo": nombre,
+        "bio": "",
+        "foto_perfil": "",
         "correo": correo,
         "telefono": telefono,
         "edad": edad_int,
@@ -277,6 +287,40 @@ def me():
         return bad_request("Sesion invalida", 401)
 
     return jsonify({"user": sanitize_user(user)})
+
+
+@app.put("/api/auth/profile")
+def update_profile():
+    store = read_store()
+    user = get_current_user(store)
+    if not user:
+        return bad_request("Sesion invalida", 401)
+
+    data = request.get_json(silent=True) or {}
+    apodo = str(data.get("apodo", user.get("apodo", user["nombre"]))).strip()
+    bio = str(data.get("bio", user.get("bio", ""))).strip()
+    foto_perfil = str(data.get("foto_perfil", user.get("foto_perfil", ""))).strip()
+
+    if not apodo or len(apodo) > 24:
+        return bad_request("Apodo invalido")
+    if len(bio) > 160:
+        return bad_request("La bio es demasiado larga")
+    if foto_perfil and not (
+        foto_perfil.startswith(("http://", "https://")) or foto_perfil.startswith("data:image/")
+    ):
+        return bad_request("La foto debe ser una URL valida o una imagen subida")
+
+    user["apodo"] = apodo
+    user["bio"] = bio
+    user["foto_perfil"] = foto_perfil
+
+    for product in store["products"]:
+        if product["dealer_id"] == user["id"]:
+            product["dealer_nombre"] = apodo
+            product["dealer_foto"] = foto_perfil
+
+    write_store(store)
+    return jsonify({"mensaje": "Perfil actualizado", "user": sanitize_user(user)})
 
 
 @app.get("/api/users")
@@ -365,7 +409,8 @@ def create_product():
     product = {
         "id": next_id(store["products"]),
         "dealer_id": user["id"],
-        "dealer_nombre": user["nombre"],
+        "dealer_nombre": user.get("apodo", user["nombre"]),
+        "dealer_foto": user.get("foto_perfil", ""),
         "nombre": nombre,
         "precio": precio,
         "oferta_activa": oferta_activa,

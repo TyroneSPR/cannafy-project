@@ -15,6 +15,7 @@
       <p class="helper-text">Presentaciones, conversaciones y comunidad entre usuarios.</p>
     </div>
     <div class="store-actions">
+      <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
       <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
     </div>
@@ -123,16 +124,22 @@ async function cargarPosts() {
     container.innerHTML = posts.map((post) => `
       <article class="social-post">
         <div class="social-post-header">
-          <div>
-            <strong>${post.author_nombre}</strong>
-            <span class="product-meta">${post.author_role || "usuario"}</span>
+          <div class="identity-row">
+            <img class="profile-avatar" src="${post.author_foto || ''}" alt="${post.author_nombre}" onerror="this.style.visibility='hidden'">
+            <div>
+              <strong>${post.author_nombre}</strong>
+              <span class="product-meta">${post.author_role || "usuario"}</span>
+            </div>
           </div>
         </div>
         <p>${post.content}</p>
         <div class="comment-list">
           ${post.comments.map((comment) => `
             <div class="comment-item">
-              <strong>${comment.author_nombre}</strong>
+              <div class="identity-row">
+                <img class="profile-avatar" src="${comment.author_foto || ''}" alt="${comment.author_nombre}" onerror="this.style.visibility='hidden'">
+                <strong>${comment.author_nombre}</strong>
+              </div>
               <span>${comment.content}</span>
             </div>
           `).join("")}

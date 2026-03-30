@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Mi perfil</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="store-shell">
+  <header class="store-header">
+    <div>
+      <h1>Mi perfil</h1>
+      <p class="helper-text">Personaliza cómo te verán los demás usuarios dentro de la plataforma.</p>
+    </div>
+    <div class="store-actions">
+      <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+    </div>
+  </header>
+
+  <section class="panel-card profile-shell">
+    <div class="profile-preview">
+      <img id="profilePreview" class="profile-avatar large" alt="Foto de perfil">
+      <div>
+        <h2 id="previewName">Tu perfil</h2>
+        <p id="previewRole" class="product-meta"></p>
+        <p id="previewBio" class="helper-text"></p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <input id="apodo" type="text" placeholder="Apodo">
+      <input id="fotoUrl" type="url" placeholder="URL de foto (opcional)">
+    </div>
+    <input id="fotoArchivo" type="file" accept="image/*">
+    <textarea id="bio" class="social-textarea" placeholder="Cuéntale algo breve a la comunidad"></textarea>
+    <button id="saveProfileBtn">Guardar perfil</button>
+    <p id="estado" class="helper-text"></p>
+  </section>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+const token = localStorage.getItem("token");
+let fotoArchivoBase64 = "";
+
+if (!token || !localStorage.getItem("currentUser")) {
+  window.location.href = "login.html";
+}
+
+document.getElementById("saveProfileBtn").addEventListener("click", guardarPerfil);
+document.getElementById("fotoArchivo").addEventListener("change", cargarFotoArchivo);
+document.getElementById("fotoUrl").addEventListener("input", actualizarPreviewDesdeUrl);
+document.getElementById("apodo").addEventListener("input", pintarPreview);
+document.getElementById("bio").addEventListener("input", pintarPreview);
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+function pintarPreview() {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const apodo = document.getElementById("apodo").value.trim() || currentUser?.apodo || currentUser?.nombre || "Tu perfil";
+  const bio = document.getElementById("bio").value.trim();
+  const foto = fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim() || currentUser?.foto_perfil || "";
+
+  document.getElementById("previewName").textContent = apodo;
+  document.getElementById("previewRole").textContent = currentUser?.role || "";
+  document.getElementById("previewBio").textContent = bio || "Sin bio todavía.";
+
+  const preview = document.getElementById("profilePreview");
+  if (foto) {
+    preview.src = foto;
+    preview.classList.remove("empty");
+  } else {
+    preview.removeAttribute("src");
+    preview.classList.add("empty");
+  }
+}
+
+async function cargarPerfil() {
+  try {
+    const result = await api("/api/auth/me");
+    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    document.getElementById("apodo").value = result.user.apodo || result.user.nombre || "";
+    document.getElementById("fotoUrl").value = result.user.foto_perfil || "";
+    document.getElementById("bio").value = result.user.bio || "";
+    pintarPreview();
+  } catch (error) {
+    document.getElementById("estado").textContent = error.message;
+  }
+}
+
+function cargarFotoArchivo(event) {
+  const file = event.target.files[0];
+  if (!file) {
+    fotoArchivoBase64 = "";
+    pintarPreview();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    fotoArchivoBase64 = String(reader.result || "");
+    pintarPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function actualizarPreviewDesdeUrl() {
+  if (!fotoArchivoBase64) {
+    pintarPreview();
+  }
+}
+
+async function guardarPerfil() {
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  try {
+    const result = await api("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify({
+        apodo: document.getElementById("apodo").value.trim(),
+        bio: document.getElementById("bio").value.trim(),
+        foto_perfil: fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim()
+      })
+    });
+
+    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    fotoArchivoBase64 = "";
+    document.getElementById("fotoArchivo").value = "";
+    estado.textContent = "Perfil actualizado.";
+    await cargarPerfil();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+cargarPerfil();
+</script>
+
+</body>
+</html>
