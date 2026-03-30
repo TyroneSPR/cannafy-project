@@ -337,6 +337,20 @@ body.dashboard-page {
   border-color: rgba(125, 223, 145, 0.25);
 }
 
+.spotlight-action {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.spotlight-action p,
+.spotlight-action h3 {
+  color: inherit;
+}
+
 .accent-card {
   background:
     linear-gradient(145deg, rgba(125, 223, 145, 0.12), rgba(82, 182, 106, 0.04)),
