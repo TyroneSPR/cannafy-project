@@ -25,7 +25,13 @@
           <span>Notificaciones</span>
           <strong id="notificationCount">0</strong>
         </button>
-        <div id="notificationPanel" class="notification-panel hidden"></div>
+        <div id="notificationPanel" class="notification-panel hidden">
+          <div class="notification-header">
+            <strong>Actividad</strong>
+            <button class="secondary-btn tiny-btn" onclick="marcarTodoLeido()">Marcar leídas</button>
+          </div>
+          <div id="notificationList"></div>
+        </div>
       </div>
       <div class="menu-anchor">
         <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
@@ -119,6 +125,7 @@ const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let imagenArchivoBase64 = "";
 let lastUnreadCount = 0;
+let audioContext = null;
 
 if (!token || !currentUser || currentUser.role !== "dealer") {
   window.location.href = "login.html";
@@ -146,6 +153,45 @@ function avatarMarkup(name, photo) {
 
 function toggleNotifications() {
   document.getElementById("notificationPanel").classList.toggle("hidden");
+}
+
+function playNotificationTone() {
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) {
+      return;
+    }
+    if (!audioContext) {
+      audioContext = new AudioCtor();
+    }
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
+
+    const now = audioContext.currentTime;
+    const gain = audioContext.createGain();
+    gain.connect(audioContext.destination);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(820, now);
+    oscillator.frequency.exponentialRampToValueAtTime(1120, now + 0.16);
+    oscillator.connect(gain);
+    oscillator.start(now);
+    oscillator.stop(now + 0.44);
+  } catch (error) {
+  }
+}
+
+function formatTime(value) {
+  try {
+    return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch (error) {
+    return "";
+  }
 }
 
 async function api(path, options = {}) {
@@ -176,22 +222,23 @@ function escapeHtml(value) {
 async function cargarNotificaciones() {
   try {
     const result = await api("/api/notifications");
-    const panel = document.getElementById("notificationPanel");
+    const list = document.getElementById("notificationList");
     const badge = document.getElementById("notificationCount");
     const count = result.unread_count || 0;
     badge.textContent = String(count);
     badge.classList.toggle("has-unread", count > 0);
 
     if (!result.items.length) {
-      panel.innerHTML = "<p class='helper-text'>No tienes notificaciones nuevas.</p>";
+      list.innerHTML = "<p class='helper-text'>No tienes notificaciones nuevas.</p>";
     } else {
-      panel.innerHTML = result.items.map((item) => `
+      list.innerHTML = result.items.map((item) => `
         <button class="notification-item ${item.read ? "" : "unread"}" onclick="abrirChatDesdeNotificacion(${item.conversation_id || 0})">
           <span class="identity-row">
             ${avatarMarkup(item.actor_nombre, item.actor_foto)}
             <span>
               <strong>${escapeHtml(item.actor_nombre)}</strong>
               <small>${escapeHtml(item.message_preview || "Nueva actividad")}</small>
+              <small class="notification-time">${formatTime(item.created_at)}</small>
             </span>
           </span>
         </button>
@@ -204,7 +251,21 @@ async function cargarNotificaciones() {
         body: latest.message_preview || "Tienes un nuevo mensaje."
       });
     }
+    if (count > lastUnreadCount) {
+      playNotificationTone();
+    }
     lastUnreadCount = count;
+  } catch (error) {
+  }
+}
+
+async function marcarTodoLeido() {
+  try {
+    await api("/api/notifications/read", {
+      method: "POST",
+      body: JSON.stringify({})
+    });
+    await cargarNotificaciones();
   } catch (error) {
   }
 }

@@ -23,9 +23,20 @@
   </header>
 
   <section class="panel-card">
-    <h2>Nueva publicación</h2>
-    <textarea id="postInput" class="social-textarea" placeholder="Comparte una idea, una presentación o abre un tema"></textarea>
-    <button id="publishBtn">Publicar</button>
+    <div class="social-composer">
+      <div class="identity-row">
+        <div id="composerAvatar" class="profile-avatar avatar-fallback"></div>
+        <div>
+          <h2>Crear publicación</h2>
+          <p class="helper-text">Comparte una idea, una presentación o abre una conversación para la comunidad.</p>
+        </div>
+      </div>
+      <textarea id="postInput" class="social-textarea" placeholder="¿Qué quieres compartir hoy?"></textarea>
+      <div class="social-composer-actions">
+        <span class="helper-text">Publica algo breve y claro para generar mejores respuestas.</span>
+        <button id="publishBtn">Publicar</button>
+      </div>
+    </div>
     <p id="estado" class="helper-text"></p>
   </section>
 
@@ -41,6 +52,7 @@
 <script>
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 
 if (!token || !localStorage.getItem("currentUser")) {
   window.location.href = "login.html";
@@ -74,6 +86,38 @@ function avatarMarkup(name, photo) {
     return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
   }
   return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function formatTime(value) {
+  try {
+    return new Date(value).toLocaleString([], {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (error) {
+    return "";
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function composerSetup() {
+  const avatar = document.getElementById("composerAvatar");
+  avatar.textContent = getInitial(currentUser?.apodo || currentUser?.nombre || "?");
+  if (currentUser?.foto_perfil) {
+    avatar.style.backgroundImage = `url("${currentUser.foto_perfil}")`;
+    avatar.textContent = "";
+    avatar.classList.remove("avatar-fallback");
+  }
 }
 
 async function crearPost() {
@@ -122,6 +166,24 @@ async function comentar(postId) {
   }
 }
 
+async function reaccionar(postId, reaction, currentReaction) {
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  try {
+    await api(`/api/posts/${postId}/reactions`, {
+      method: "POST",
+      body: JSON.stringify({
+        reaction,
+        toggle_off: currentReaction === reaction
+      })
+    });
+    await cargarPosts();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
 async function cargarPosts() {
   const container = document.getElementById("postList");
   container.innerHTML = "<p class='helper-text'>Cargando publicaciones...</p>";
@@ -141,24 +203,33 @@ async function cargarPosts() {
             <div>
               <strong>${post.author_nombre}</strong>
               <span class="product-meta">${post.author_role || "usuario"}</span>
+              <small class="social-time">${formatTime(post.created_at)}</small>
             </div>
           </div>
         </div>
-        <p>${post.content}</p>
+        <p class="social-post-copy">${escapeHtml(post.content)}</p>
+        <div class="social-reactions">
+          <button class="secondary-btn reaction-btn ${post.user_reaction === "like" ? "active" : ""}" onclick="reaccionar(${post.id}, 'like', '${post.user_reaction || ""}')">Me gusta ${post.reactions.like || 0}</button>
+          <button class="secondary-btn reaction-btn ${post.user_reaction === "fire" ? "active" : ""}" onclick="reaccionar(${post.id}, 'fire', '${post.user_reaction || ""}')">Fuego ${post.reactions.fire || 0}</button>
+          <button class="secondary-btn reaction-btn ${post.user_reaction === "idea" ? "active" : ""}" onclick="reaccionar(${post.id}, 'idea', '${post.user_reaction || ""}')">Idea ${post.reactions.idea || 0}</button>
+        </div>
         <div class="comment-list">
           ${post.comments.map((comment) => `
             <div class="comment-item">
               <div class="identity-row">
                 ${avatarMarkup(comment.author_nombre, comment.author_foto)}
-                <strong>${comment.author_nombre}</strong>
+                <div>
+                  <strong>${comment.author_nombre}</strong>
+                  <small class="social-time">${formatTime(comment.created_at)}</small>
+                </div>
               </div>
-              <span>${comment.content}</span>
+              <span>${escapeHtml(comment.content)}</span>
             </div>
           `).join("")}
         </div>
         <div class="comment-form">
-          <input id="comment-${post.id}" type="text" placeholder="Responder a esta publicación">
-          <button class="secondary-btn" onclick="comentar(${post.id})">Comentar</button>
+          <input id="comment-${post.id}" type="text" placeholder="Escribe una respuesta a esta publicación">
+          <button class="secondary-btn" onclick="comentar(${post.id})">Responder</button>
         </div>
       </article>
     `).join("");
@@ -167,6 +238,7 @@ async function cargarPosts() {
   }
 }
 
+composerSetup();
 cargarPosts();
 </script>
 

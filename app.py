@@ -181,6 +181,8 @@ def sanitize_conversation(
 
 def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]:
     author = next((user for user in store["users"] if user["id"] == post["author_id"]), None)
+    reactions = post.get("reactions", {})
+    current_user = get_current_user(store)
     comments = []
     for comment in post.get("comments", []):
         comment_author = next(
@@ -207,6 +209,19 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
         "author_foto": author.get("foto_perfil", "") if author else "",
         "content": post["content"],
         "created_at": post["created_at"],
+        "reactions": {
+            "like": len(reactions.get("like", [])),
+            "fire": len(reactions.get("fire", [])),
+            "idea": len(reactions.get("idea", [])),
+        },
+        "user_reaction": next(
+            (
+                reaction_name
+                for reaction_name, user_ids in reactions.items()
+                if current_user and current_user["id"] in user_ids
+            ),
+            None,
+        ),
         "comments": comments,
     }
 
@@ -864,11 +879,43 @@ def create_post():
         "author_id": current_user["id"],
         "content": content,
         "created_at": utc_now(),
+        "reactions": {"like": [], "fire": [], "idea": []},
         "comments": [],
     }
     store["posts"].append(post)
     write_store(store)
     return jsonify({"mensaje": "Publicacion creada", "post": sanitize_post(post, store)}), 201
+
+
+@app.post("/api/posts/<int:post_id>/reactions")
+def react_to_post(post_id: int):
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Debes iniciar sesion", 401)
+
+    post = next((item for item in store["posts"] if item["id"] == post_id), None)
+    if not post:
+        return bad_request("Publicacion no encontrada", 404)
+
+    data = request.get_json(silent=True) or {}
+    reaction = str(data.get("reaction", "")).strip().lower()
+    if reaction not in {"like", "fire", "idea"}:
+        return bad_request("Reaccion invalida")
+
+    post.setdefault("reactions", {"like": [], "fire": [], "idea": []})
+    for reaction_name in ("like", "fire", "idea"):
+        post["reactions"].setdefault(reaction_name, [])
+        if current_user["id"] in post["reactions"][reaction_name]:
+            post["reactions"][reaction_name] = [
+                user_id for user_id in post["reactions"][reaction_name] if user_id != current_user["id"]
+            ]
+
+    if data.get("toggle_off") is not True:
+        post["reactions"][reaction].append(current_user["id"])
+
+    write_store(store)
+    return jsonify({"mensaje": "Reaccion actualizada", "post": sanitize_post(post, store)})
 
 
 @app.post("/api/posts/<int:post_id>/comments")
