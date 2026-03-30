@@ -15,6 +15,7 @@
       <p class="helper-text">Personaliza cómo te verán los demás usuarios dentro de la plataforma.</p>
     </div>
     <div class="store-actions">
+      <button class="secondary-btn" id="adminShortcutBtn" hidden onclick="window.location.href='admin.html'">Panel ADM</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
       <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
       <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
@@ -79,10 +80,16 @@ function pintarPreview() {
   const apodo = document.getElementById("apodo").value.trim() || currentUser?.apodo || currentUser?.nombre || "Tu perfil";
   const bio = document.getElementById("bio").value.trim();
   const foto = fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim() || currentUser?.foto_perfil || "";
+  const roleLabel = currentUser?.role === "admin"
+    ? "ADM"
+    : currentUser?.role === "dealer"
+      ? "Dealer"
+      : "Consumidor";
 
   document.getElementById("previewName").textContent = apodo;
-  document.getElementById("previewRole").textContent = currentUser?.role || "";
+  document.getElementById("previewRole").textContent = roleLabel || "";
   document.getElementById("previewBio").textContent = bio || "Sin bio todavía.";
+  document.getElementById("adminShortcutBtn").hidden = currentUser?.role !== "admin";
 
   const preview = document.getElementById("profilePreview");
   if (foto) {

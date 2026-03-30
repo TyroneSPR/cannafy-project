@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Panel ADM</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="store-shell">
+  <header class="store-header">
+    <div>
+      <h1>Panel ADM</h1>
+      <p class="helper-text">Gestiona la comunidad, revisa cuentas activas y controla suspensiones.</p>
+    </div>
+    <div class="store-actions">
+      <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
+      <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+      <button class="secondary-btn" id="logoutBtn">Salir</button>
+    </div>
+  </header>
+
+  <section class="panel-card">
+    <div class="profile-preview">
+      <img id="adminAvatar" class="profile-avatar large" alt="Foto de perfil del administrador">
+      <div>
+        <h2 id="adminName">ADM</h2>
+        <p class="product-meta">Administrador de Cannafy</p>
+        <p class="helper-text">Desde aquí puedes banear y desbanear usuarios cuando incumplan las normas.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-card">
+    <div class="section-heading">
+      <div>
+        <h2>Usuarios registrados</h2>
+        <p class="helper-text">Puedes suspender cuentas y también rehabilitarlas cuando corresponda.</p>
+      </div>
+      <button class="secondary-btn" id="refreshBtn">Actualizar</button>
+    </div>
+    <p id="estado" class="helper-text"></p>
+    <div id="usersList" class="product-grid"></div>
+  </section>
+</div>
+
+<script>
+const API_URL = window.location.origin;
+const token = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+
+if (!token || !currentUser || currentUser.role !== "admin") {
+  window.location.href = "login.html";
+}
+
+document.getElementById("refreshBtn").addEventListener("click", cargarUsuarios);
+document.getElementById("logoutBtn").addEventListener("click", cerrarSesion);
+
+function setEstado(message) {
+  document.getElementById("estado").textContent = message || "";
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+function roleLabel(role) {
+  if (role === "admin") return "ADM";
+  if (role === "dealer") return "Dealer";
+  return "Consumidor";
+}
+
+function pintarCabecera() {
+  document.getElementById("adminName").textContent = currentUser.apodo || "ADM";
+  const avatar = document.getElementById("adminAvatar");
+  if (currentUser.foto_perfil) {
+    avatar.src = currentUser.foto_perfil;
+    avatar.classList.remove("empty");
+  } else {
+    avatar.removeAttribute("src");
+    avatar.classList.add("empty");
+  }
+}
+
+function renderUsers(users) {
+  const list = document.getElementById("usersList");
+
+  if (!users.length) {
+    list.innerHTML = '<article class="product-card"><p class="helper-text">Aun no hay otros usuarios registrados.</p></article>';
+    return;
+  }
+
+  list.innerHTML = users.map((user) => `
+    <article class="product-card">
+      <div class="product-card-top">
+        <div class="product-badge-row">
+          <span class="badge-chip">${roleLabel(user.role)}</span>
+          ${user.banned ? '<span class="badge-chip sale">Baneado</span>' : '<span class="badge-chip">Activo</span>'}
+        </div>
+      </div>
+      <div class="profile-preview compact">
+        ${user.foto_perfil ? `<img src="${user.foto_perfil}" class="profile-avatar" alt="Foto de ${user.apodo || user.nombre}">` : '<div class="profile-avatar empty"></div>'}
+        <div>
+          <h3>${user.apodo || user.nombre}</h3>
+          <p class="helper-text">${user.correo}</p>
+          <p class="product-meta">${user.bio || "Sin bio."}</p>
+        </div>
+      </div>
+      <div class="product-card-actions">
+        <button class="${user.banned ? 'secondary-btn' : ''}" data-user-id="${user.id}" data-action="${user.banned ? 'unban' : 'ban'}">
+          ${user.banned ? 'Desbanear' : 'Banear'}
+        </button>
+      </div>
+    </article>
+  `).join("");
+
+  list.querySelectorAll("button[data-user-id]").forEach((button) => {
+    button.addEventListener("click", () => cambiarEstadoUsuario(button.dataset.userId, button.dataset.action));
+  });
+}
+
+async function cargarUsuarios() {
+  setEstado("Cargando usuarios...");
+  try {
+    const users = await api("/api/admin/users");
+    renderUsers(users);
+    setEstado(`Usuarios cargados: ${users.length}`);
+  } catch (error) {
+    setEstado(error.message);
+  }
+}
+
+async function cambiarEstadoUsuario(userId, action) {
+  const label = action === "ban" ? "baneando" : "rehabilitando";
+  setEstado(`Procesando, ${label} usuario...`);
+  try {
+    const result = await api(`/api/admin/users/${userId}/${action}`, { method: "POST" });
+    setEstado(result.mensaje || "Accion completada.");
+    await cargarUsuarios();
+  } catch (error) {
+    setEstado(error.message);
+  }
+}
+
+async function cerrarSesion() {
+  try {
+    await api("/api/auth/logout", { method: "POST" });
+  } catch (error) {
+  } finally {
+    localStorage.removeItem("token");
+    localStorage.removeItem("currentUser");
+    window.location.href = "login.html";
+  }
+}
+
+pintarCabecera();
+cargarUsuarios();
+</script>
+
+</body>
+</html>

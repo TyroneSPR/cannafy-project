@@ -15,6 +15,9 @@ CORS(app)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data.json"
+DEFAULT_ADMIN_EMAIL = "tyronegonzalesg4@gmail.com"
+DEFAULT_ADMIN_PASSWORD = "Macnanime26."
+DEFAULT_ADMIN_NAME = "Tyrone"
 ALLOWED_STATIC_FILES = {
     "index.html",
     "rol.html",
@@ -27,6 +30,7 @@ ALLOWED_STATIC_FILES = {
     "chat.html",
     "social.html",
     "perfil.html",
+    "admin.html",
     "acerca.html",
     "styles.css",
     "terms-background.jpg",
@@ -50,6 +54,45 @@ def ensure_store() -> None:
     )
 
 
+def ensure_default_admin(store: dict[str, Any]) -> bool:
+    existing_admin = next(
+        (user for user in store["users"] if user["correo"] == DEFAULT_ADMIN_EMAIL),
+        None,
+    )
+    if existing_admin:
+        changed = False
+        if existing_admin.get("role") != "admin":
+            existing_admin["role"] = "admin"
+            changed = True
+        if existing_admin.get("apodo") != "ADM":
+            existing_admin["apodo"] = "ADM"
+            changed = True
+        if "banned" not in existing_admin:
+            existing_admin["banned"] = False
+            changed = True
+        return changed
+
+    store["users"].append(
+        {
+            "id": next_id(store["users"]),
+            "role": "admin",
+            "nombre": DEFAULT_ADMIN_NAME,
+            "apodo": "ADM",
+            "bio": "Administrador principal de Cannafy.",
+            "foto_perfil": "",
+            "correo": DEFAULT_ADMIN_EMAIL,
+            "telefono": "",
+            "edad": None,
+            "documento": "",
+            "password_hash": generate_password_hash(DEFAULT_ADMIN_PASSWORD),
+            "accepted_terms": True,
+            "banned": False,
+            "created_at": utc_now(),
+        }
+    )
+    return True
+
+
 def read_store() -> dict[str, Any]:
     ensure_store()
     store = json.loads(DATA_FILE.read_text(encoding="utf-8"))
@@ -58,6 +101,8 @@ def read_store() -> dict[str, Any]:
     store.setdefault("sessions", [])
     store.setdefault("conversations", [])
     store.setdefault("posts", [])
+    if ensure_default_admin(store):
+        write_store(store)
     return store
 
 
@@ -81,6 +126,7 @@ def sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
         "telefono": user.get("telefono"),
         "edad": user.get("edad"),
         "documento": user.get("documento"),
+        "banned": bool(user.get("banned", False)),
         "created_at": user["created_at"],
     }
 
@@ -128,11 +174,13 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
             {
                 "id": comment["id"],
                 "author_id": comment["author_id"],
-        "author_nombre": comment_author.get("apodo", comment_author["nombre"]) if comment_author else "Usuario",
-        "author_foto": comment_author.get("foto_perfil", "") if comment_author else "",
-        "content": comment["content"],
-        "created_at": comment["created_at"],
-    }
+                "author_nombre": comment_author.get("apodo", comment_author["nombre"])
+                if comment_author
+                else "Usuario",
+                "author_foto": comment_author.get("foto_perfil", "") if comment_author else "",
+                "content": comment["content"],
+                "created_at": comment["created_at"],
+            }
         )
 
     return {
@@ -182,7 +230,19 @@ def get_current_user(store: dict[str, Any]) -> dict[str, Any] | None:
     if not session:
         return None
 
-    return next((user for user in store["users"] if user["id"] == session["user_id"]), None)
+    user = next((user for user in store["users"] if user["id"] == session["user_id"]), None)
+    if not user or user.get("banned"):
+        return None
+    return user
+
+
+def require_admin(store: dict[str, Any]) -> tuple[dict[str, Any] | None, Any | None]:
+    user = get_current_user(store)
+    if not user:
+        return None, bad_request("Sesion invalida", 401)
+    if user["role"] != "admin":
+        return None, bad_request("Solo el administrador puede hacer esto", 403)
+    return user, None
 
 
 def validate_email(value: str) -> bool:
@@ -273,6 +333,7 @@ def register():
         "documento": documento,
         "password_hash": generate_password_hash(password),
         "accepted_terms": acepto_terminos,
+        "banned": False,
         "created_at": utc_now(),
     }
 
@@ -296,6 +357,8 @@ def login():
 
     if not user or not check_password_hash(user["password_hash"], password):
         return bad_request("Credenciales incorrectas", 401)
+    if user.get("banned"):
+        return bad_request("Tu cuenta fue suspendida por administracion", 403)
 
     token = secrets.token_hex(24)
     store["sessions"] = [item for item in store["sessions"] if item["user_id"] != user["id"]]
@@ -365,6 +428,55 @@ def list_users():
     ]
     users.sort(key=lambda item: (item["role"], item["nombre"].lower()))
     return jsonify(users)
+
+
+@app.get("/api/admin/users")
+def admin_list_users():
+    store = read_store()
+    admin_user, error_response = require_admin(store)
+    if error_response:
+        return error_response
+
+    users = [sanitize_user(user) for user in store["users"] if user["id"] != admin_user["id"]]
+    users.sort(key=lambda item: (item["banned"], item["role"], item["nombre"].lower()))
+    return jsonify(users)
+
+
+@app.post("/api/admin/users/<int:user_id>/ban")
+def admin_ban_user(user_id: int):
+    store = read_store()
+    admin_user, error_response = require_admin(store)
+    if error_response:
+        return error_response
+
+    user = next((item for item in store["users"] if item["id"] == user_id), None)
+    if not user:
+        return bad_request("Usuario no encontrado", 404)
+    if user["id"] == admin_user["id"]:
+        return bad_request("No puedes banear tu propia cuenta", 400)
+    if user["role"] == "admin":
+        return bad_request("No puedes banear a otro administrador", 400)
+
+    user["banned"] = True
+    store["sessions"] = [session for session in store["sessions"] if session["user_id"] != user_id]
+    write_store(store)
+    return jsonify({"mensaje": "Usuario baneado", "user": sanitize_user(user)})
+
+
+@app.post("/api/admin/users/<int:user_id>/unban")
+def admin_unban_user(user_id: int):
+    store = read_store()
+    _, error_response = require_admin(store)
+    if error_response:
+        return error_response
+
+    user = next((item for item in store["users"] if item["id"] == user_id), None)
+    if not user:
+        return bad_request("Usuario no encontrado", 404)
+
+    user["banned"] = False
+    write_store(store)
+    return jsonify({"mensaje": "Usuario rehabilitado", "user": sanitize_user(user)})
 
 
 @app.post("/api/auth/logout")

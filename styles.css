@@ -1180,3 +1180,40 @@ textarea {
     font-size: 0.76rem;
   }
 }
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9f8e6;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge-chip.sale {
+  background: rgba(255, 95, 95, 0.18);
+  color: #ffd2d2;
+}
+
+.profile-preview.compact {
+  align-items: flex-start;
+  margin: 10px 0 0;
+}
+
+.product-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}

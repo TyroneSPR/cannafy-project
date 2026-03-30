@@ -1,7 +1,30 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": 1,
+      "role": "admin",
+      "nombre": "Tyrone",
+      "apodo": "ADM",
+      "bio": "Administrador principal de Cannafy.",
+      "foto_perfil": "",
+      "correo": "tyronegonzalesg4@gmail.com",
+      "telefono": "",
+      "edad": null,
+      "documento": "",
+      "password_hash": "scrypt:32768:8:1$k2y5TIpCXuVPalCw$d172b1547d624fb060c41dd123a13989c45bf06960cbb209362e27136c670763cd769efc8e59570adc783ab07b0d36135ab15f072310690cbc112683ae3af718",
+      "accepted_terms": true,
+      "banned": false,
+      "created_at": "2026-03-30T04:49:11.174664+00:00"
+    }
+  ],
   "products": [],
-  "sessions": [],
+  "sessions": [
+    {
+      "token": "bbaf4db535e5f50687b2b6fe5fbb73ff07c0b7029bff734f",
+      "user_id": 1,
+      "created_at": "2026-03-30T04:49:26.567166+00:00"
+    }
+  ],
   "conversations": [],
   "posts": []
 }
