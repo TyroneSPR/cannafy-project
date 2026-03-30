@@ -144,7 +144,10 @@ async function cargarProductos() {
           <span class="product-meta">Publicado por ${producto.dealer_nombre}</span>
           <h3>${producto.nombre}</h3>
           <p>${producto.descripcion || "Sin descripción"}</p>
-          <strong>${producto.precio}</strong>
+          <div class="price-stack">
+            <strong>${producto.precio_mostrar || producto.precio}</strong>
+            ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
+          </div>
         </div>
         <div class="card-actions">
           <button onclick="verDetalle(${producto.id})">Ver más</button>
@@ -166,7 +169,7 @@ async function verDetalle(productId) {
   document.getElementById("modalImage").src = producto.imagen;
   document.getElementById("modalDealer").textContent = `Dealer: ${producto.dealer_nombre}`;
   document.getElementById("modalDescription").textContent = producto.descripcion || "Sin descripción.";
-  document.getElementById("modalPrice").textContent = producto.precio;
+  document.getElementById("modalPrice").textContent = producto.precio_mostrar || producto.precio;
   document.getElementById("productModal").classList.remove("hidden");
 }
 

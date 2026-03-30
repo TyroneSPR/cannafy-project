@@ -30,6 +30,14 @@
         <input type="url" id="imagen" placeholder="URL de imagen (opcional)">
       </div>
 
+      <div class="offer-row">
+        <label class="checkbox-row compact-check">
+          <input type="checkbox" id="ofertaActiva">
+          <span>Activar oferta</span>
+        </label>
+        <input type="text" id="precioOferta" placeholder="Precio en oferta (opcional)">
+      </div>
+
       <div class="upload-row">
         <input type="file" id="imagenArchivo" accept="image/*">
         <div class="image-preview-shell">
@@ -115,7 +123,9 @@ async function crearProducto() {
     precio: document.getElementById("precio").value.trim(),
     imagen: document.getElementById("imagen").value.trim(),
     imagen_archivo: imagenArchivoBase64,
-    descripcion: document.getElementById("descripcion").value.trim()
+    descripcion: document.getElementById("descripcion").value.trim(),
+    oferta_activa: document.getElementById("ofertaActiva").checked,
+    precio_oferta: document.getElementById("precioOferta").value.trim()
   };
 
   try {
@@ -140,6 +150,8 @@ async function crearProducto() {
     document.getElementById("precio").value = "";
     document.getElementById("imagen").value = "";
     document.getElementById("descripcion").value = "";
+    document.getElementById("ofertaActiva").checked = false;
+    document.getElementById("precioOferta").value = "";
     document.getElementById("imagenArchivo").value = "";
     imagenArchivoBase64 = "";
     actualizarPreview("");
@@ -167,15 +179,62 @@ async function cargarProductos() {
       <article class="product-card">
         <img src="${producto.imagen}" alt="${producto.nombre}">
         <div class="product-copy">
-          <h3>${producto.nombre}</h3>
-          <p>${producto.descripcion || "Sin descripción"}</p>
-          <strong>${producto.precio}</strong>
+          <input id="nombre-${producto.id}" type="text" value="${escapeHtml(producto.nombre)}" placeholder="Nombre">
+          <input id="precio-${producto.id}" type="text" value="${escapeHtml(producto.precio)}" placeholder="Precio">
+          <input id="descripcion-${producto.id}" type="text" value="${escapeHtml(producto.descripcion || "")}" placeholder="Descripción">
+          <label class="checkbox-row compact-check">
+            <input id="oferta-${producto.id}" type="checkbox" ${producto.oferta_activa ? "checked" : ""}>
+            <span>Oferta activa</span>
+          </label>
+          <input id="precio-oferta-${producto.id}" type="text" value="${escapeHtml(producto.precio_oferta || "")}" placeholder="Precio en oferta">
+          <div class="price-stack">
+            <strong>${producto.precio_mostrar}</strong>
+            ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
+          </div>
         </div>
-        <button onclick="eliminarProducto(${producto.id})">Eliminar</button>
+        <div class="card-actions dealer-actions">
+          <button onclick="guardarCambios(${producto.id})">Guardar</button>
+          <button class="secondary-btn" onclick="eliminarProducto(${producto.id})">Eliminar</button>
+        </div>
       </article>
     `).join("");
   } catch (error) {
     contenedor.innerHTML = "<p class='helper-text'>No se pudieron cargar los productos.</p>";
+  }
+}
+
+async function guardarCambios(id) {
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  const payload = {
+    nombre: document.getElementById(`nombre-${id}`).value.trim(),
+    precio: document.getElementById(`precio-${id}`).value.trim(),
+    descripcion: document.getElementById(`descripcion-${id}`).value.trim(),
+    oferta_activa: document.getElementById(`oferta-${id}`).checked,
+    precio_oferta: document.getElementById(`precio-oferta-${id}`).value.trim()
+  };
+
+  try {
+    const response = await fetch(`${API_URL}/api/products/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      estado.textContent = result.error || "No se pudo actualizar.";
+      return;
+    }
+
+    estado.textContent = "Producto actualizado.";
+    cargarProductos();
+  } catch (error) {
+    estado.textContent = "No se pudo conectar con la API.";
   }
 }
 
@@ -211,6 +270,15 @@ async function cerrarSesion() {
   localStorage.removeItem("token");
   localStorage.removeItem("currentUser");
   window.location.href = "login.html";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 cargarProductos();

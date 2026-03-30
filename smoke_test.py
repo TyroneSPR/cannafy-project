@@ -63,6 +63,18 @@ def main() -> None:
     print("products", products.status_code, len(products.json))
     product_detail = client.get(f"/api/products/{product.json['product']['id']}")
     print("product_detail", product_detail.status_code)
+    update_product = client.put(
+        f"/api/products/{product.json['product']['id']}",
+        json={
+            "nombre": "Flor premium editada",
+            "precio": "S/ 40",
+            "descripcion": "Producto actualizado desde prueba",
+            "oferta_activa": True,
+            "precio_oferta": "S/ 32",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    print("update_product", update_product.status_code)
 
     conversation = client.post(
         "/api/conversations",

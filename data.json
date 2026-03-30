@@ -32,6 +32,8 @@
       "dealer_nombre": "Deysi Chakala",
       "nombre": "Dildo",
       "precio": "50",
+      "oferta_activa": false,
+      "precio_oferta": "",
       "imagen": "https://foreplay.pe/wp-content/uploads/2024/11/1720696217.4048680.webp",
       "descripcion": "te lo metes y te lo sacas",
       "created_at": "2026-03-30T02:56:32.573988+00:00"
@@ -49,6 +51,24 @@
       "created_at": "2026-03-30T02:54:59.460759+00:00"
     }
   ],
-  "conversations": [],
+  "conversations": [
+    {
+      "id": 1,
+      "participant_ids": [
+        1,
+        2
+      ],
+      "messages": [
+        {
+          "id": 1,
+          "conversation_id": 1,
+          "sender_id": 2,
+          "content": "hola a cuanto?",
+          "created_at": "2026-03-30T03:16:09.981247+00:00"
+        }
+      ],
+      "updated_at": "2026-03-30T03:16:09.981247+00:00"
+    }
+  ],
   "posts": []
 }

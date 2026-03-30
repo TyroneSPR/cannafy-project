@@ -126,12 +126,17 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
 
 
 def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
+    oferta_activa = bool(product.get("oferta_activa"))
+    precio_oferta = str(product.get("precio_oferta", "")).strip()
     return {
         "id": product["id"],
         "dealer_id": product["dealer_id"],
         "dealer_nombre": product["dealer_nombre"],
         "nombre": product["nombre"],
         "precio": product["precio"],
+        "oferta_activa": oferta_activa,
+        "precio_oferta": precio_oferta,
+        "precio_mostrar": precio_oferta if oferta_activa and precio_oferta else product["precio"],
         "imagen": product["imagen"],
         "descripcion": product["descripcion"],
         "created_at": product["created_at"],
@@ -337,6 +342,8 @@ def create_product():
     imagen = str(data.get("imagen", "")).strip()
     imagen_archivo = str(data.get("imagen_archivo", "")).strip()
     descripcion = str(data.get("descripcion", "")).strip()
+    oferta_activa = bool(data.get("oferta_activa"))
+    precio_oferta = str(data.get("precio_oferta", "")).strip()
 
     if not nombre or len(nombre) > 60:
         return bad_request("Nombre de producto invalido")
@@ -352,6 +359,8 @@ def create_product():
         return bad_request("La imagen debe ser una URL valida o un archivo de imagen")
     if len(descripcion) > 180:
         return bad_request("Descripcion demasiado larga")
+    if oferta_activa and not precio_oferta:
+        return bad_request("Debes indicar un precio de oferta")
 
     product = {
         "id": next_id(store["products"]),
@@ -359,6 +368,8 @@ def create_product():
         "dealer_nombre": user["nombre"],
         "nombre": nombre,
         "precio": precio,
+        "oferta_activa": oferta_activa,
+        "precio_oferta": precio_oferta,
         "imagen": imagen_final,
         "descripcion": descripcion,
         "created_at": utc_now(),
@@ -367,6 +378,47 @@ def create_product():
     write_store(store)
 
     return jsonify({"mensaje": "Producto publicado", "product": sanitize_product(product)}), 201
+
+
+@app.put("/api/products/<int:product_id>")
+def update_product(product_id: int):
+    store = read_store()
+    user = get_current_user(store)
+    if not user:
+        return bad_request("Debes iniciar sesion", 401)
+    if user["role"] != "dealer":
+        return bad_request("Solo los dealers pueden modificar productos", 403)
+
+    product = next((item for item in store["products"] if item["id"] == product_id), None)
+    if not product:
+        return bad_request("Producto no encontrado", 404)
+    if product["dealer_id"] != user["id"]:
+        return bad_request("No puedes modificar este producto", 403)
+
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get("nombre", product["nombre"])).strip()
+    precio = str(data.get("precio", product["precio"])).strip()
+    descripcion = str(data.get("descripcion", product.get("descripcion", ""))).strip()
+    oferta_activa = bool(data.get("oferta_activa", product.get("oferta_activa", False)))
+    precio_oferta = str(data.get("precio_oferta", product.get("precio_oferta", ""))).strip()
+
+    if not nombre or len(nombre) > 60:
+        return bad_request("Nombre de producto invalido")
+    if not precio:
+        return bad_request("Precio requerido")
+    if len(descripcion) > 180:
+        return bad_request("Descripcion demasiado larga")
+    if oferta_activa and not precio_oferta:
+        return bad_request("Debes indicar un precio de oferta")
+
+    product["nombre"] = nombre
+    product["precio"] = precio
+    product["descripcion"] = descripcion
+    product["oferta_activa"] = oferta_activa
+    product["precio_oferta"] = precio_oferta
+    write_store(store)
+
+    return jsonify({"mensaje": "Producto actualizado", "product": sanitize_product(product)})
 
 
 @app.delete("/api/products/<int:product_id>")

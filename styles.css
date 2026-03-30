@@ -234,6 +234,14 @@ input::placeholder {
   margin: 18px 0;
 }
 
+.offer-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .telefono-container {
   display: grid;
   grid-template-columns: 110px 1fr;
@@ -264,6 +272,14 @@ input::placeholder {
   gap: 10px;
   margin-top: 16px;
   text-align: left;
+}
+
+.compact-check {
+  margin-top: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .checkbox-row input {
@@ -342,6 +358,10 @@ input::placeholder {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 0 12px 12px;
+}
+
+.dealer-actions {
+  margin-top: 6px;
 }
 
 .card-actions button,
@@ -466,6 +486,25 @@ input::placeholder {
   display: none;
 }
 
+.price-stack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.offer-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(125, 223, 145, 0.16);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .user-list,
 .conversation-list,
 .social-feed {
@@ -514,11 +553,15 @@ input::placeholder {
 }
 
 .message-bubble {
-  max-width: 75%;
+  width: fit-content;
+  max-width: min(75%, 560px);
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
+  justify-self: start;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .message-bubble.own {
@@ -613,6 +656,7 @@ textarea {
   }
 
   .form-grid,
+  .offer-row,
   .telefono-container,
   .store-header,
   .composer,
