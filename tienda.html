@@ -22,13 +22,16 @@
       <div class="search-shell">
         <input id="busqueda" type="text" placeholder="Buscar productos, dealers o ideas">
       </div>
+      <button class="cart-top-btn" onclick="openCartPanel()">
+        <span>Carrito</span>
+        <strong id="cartCount">0</strong>
+      </button>
       <div class="menu-anchor">
         <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
         <div id="quickMenu" class="quick-menu hidden">
           <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
           <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
           <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
-          <button class="secondary-btn" onclick="toggleCart()">Carrito <span id="cartCount">0</span></button>
           <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
           <button onclick="cerrarSesion()">Cerrar sesión</button>
         </div>
@@ -185,6 +188,10 @@ function quitarDelCarrito(index) {
 
 function toggleCart() {
   document.getElementById("cartPanel").classList.toggle("hidden");
+}
+
+function openCartPanel() {
+  document.getElementById("cartPanel").classList.remove("hidden");
 }
 
 async function cargarProductos() {

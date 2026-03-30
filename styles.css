@@ -138,6 +138,32 @@ body.dashboard-page {
   position: relative;
 }
 
+.cart-top-btn {
+  width: auto;
+  min-width: 112px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(125, 223, 145, 0.12);
+  color: #e7ffeb;
+  border: 1px solid rgba(125, 223, 145, 0.22);
+}
+
+.cart-top-btn strong {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(125, 223, 145, 0.24);
+  color: #b6ffc3;
+  font-size: 0.72rem;
+}
+
 .search-shell {
   min-width: min(44vw, 420px);
 }
@@ -1054,6 +1080,12 @@ textarea {
     width: 32px;
     height: 32px;
     border-radius: 10px;
+  }
+
+  .cart-top-btn {
+    min-width: 96px;
+    padding: 9px 10px;
+    font-size: 0.72rem;
   }
 
   .hero-copy,
