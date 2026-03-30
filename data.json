@@ -11,20 +11,15 @@
       "telefono": "",
       "edad": null,
       "documento": "",
-      "password_hash": "scrypt:32768:8:1$k2y5TIpCXuVPalCw$d172b1547d624fb060c41dd123a13989c45bf06960cbb209362e27136c670763cd769efc8e59570adc783ab07b0d36135ab15f072310690cbc112683ae3af718",
+      "password_hash": "scrypt:32768:8:1$pRDEA1AD7kNiSfXp$b13791599d622acd8a4828a94d435e41aea479c11af9373125fcf5768ebcbc0c78086cd964c8b266f4ced722c1b8573188579fc12512e0694858b4f937121291",
       "accepted_terms": true,
       "banned": false,
-      "created_at": "2026-03-30T04:49:11.174664+00:00"
+      "created_at": "2026-03-30T13:51:56.272310+00:00"
     }
   ],
   "products": [],
-  "sessions": [
-    {
-      "token": "bbaf4db535e5f50687b2b6fe5fbb73ff07c0b7029bff734f",
-      "user_id": 1,
-      "created_at": "2026-03-30T04:49:26.567166+00:00"
-    }
-  ],
+  "sessions": [],
   "conversations": [],
-  "posts": []
+  "posts": [],
+  "notifications": []
 }

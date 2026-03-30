@@ -25,6 +25,13 @@
         <p id="chatTitle" class="helper-text">Selecciona una persona para abrir una conversación.</p>
       </div>
       <div class="store-actions">
+        <div class="notification-anchor">
+          <button class="secondary-btn notification-btn" onclick="toggleNotifications()">
+            <span>Notificaciones</span>
+            <strong id="notificationCount">0</strong>
+          </button>
+          <div id="notificationPanel" class="notification-panel hidden"></div>
+        </div>
         <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
         <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
         <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
@@ -51,12 +58,16 @@ const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let activeConversationId = null;
 let isRefreshingConversations = false;
 let pollHandle = null;
+let lastUnreadCount = 0;
 
 if (!token || !currentUser) {
   window.location.href = "login.html";
 }
 
 document.getElementById("sendBtn").addEventListener("click", enviarMensaje);
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission().catch(() => {});
+}
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -84,6 +95,87 @@ function avatarMarkup(name, photo) {
     return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
   }
   return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function roleLabel(role) {
+  if (role === "admin") return "ADM";
+  if (role === "dealer") return "Dealer";
+  return "Consumidor";
+}
+
+function toggleNotifications() {
+  document.getElementById("notificationPanel").classList.toggle("hidden");
+}
+
+function showBrowserNotification(title, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") {
+    return;
+  }
+  if (document.visibilityState === "visible") {
+    return;
+  }
+  new Notification(title, { body });
+}
+
+async function cargarNotificaciones() {
+  try {
+    const result = await api("/api/notifications");
+    const count = result.unread_count || 0;
+    const badge = document.getElementById("notificationCount");
+    const panel = document.getElementById("notificationPanel");
+
+    badge.textContent = String(count);
+    badge.classList.toggle("has-unread", count > 0);
+
+    if (!result.items.length) {
+      panel.innerHTML = "<p class='helper-text'>No tienes notificaciones nuevas.</p>";
+    } else {
+      panel.innerHTML = result.items.map((item) => `
+        <button class="notification-item ${item.read ? "" : "unread"}" onclick="abrirDesdeNotificacion(${item.conversation_id || 0})">
+          <span class="identity-row">
+            ${avatarMarkup(item.actor_nombre, item.actor_foto)}
+            <span>
+              <strong>${escapeHtml(item.actor_nombre)}</strong>
+              <small>${escapeHtml(item.message_preview || "Nueva actividad")}</small>
+            </span>
+          </span>
+        </button>
+      `).join("");
+    }
+
+    if (count > lastUnreadCount && result.items.length) {
+      const latest = result.items.find((item) => !item.read) || result.items[0];
+      showBrowserNotification(`Nuevo mensaje de ${latest.actor_nombre}`, latest.message_preview || "Tienes una nueva notificación.");
+    }
+    lastUnreadCount = count;
+  } catch (error) {
+  }
+}
+
+async function abrirDesdeNotificacion(conversationId) {
+  document.getElementById("notificationPanel").classList.add("hidden");
+  if (!conversationId) {
+    return;
+  }
+  const conversations = await cargarConversaciones();
+  const selected = conversations.find((conversation) => conversation.id === conversationId);
+  if (selected) {
+    await abrirConversacion(
+      selected.id,
+      selected.other_user.apodo || selected.other_user.nombre,
+      false
+    );
+  }
+  await cargarNotificaciones();
 }
 
 async function cargarUsuarios() {
@@ -125,8 +217,11 @@ async function cargarConversaciones() {
       container.innerHTML = `
         <h3 class="section-label">Chats activos</h3>
         ${conversations.map((conversation) => `
-          <button class="conversation-item ${conversation.id === activeConversationId ? "selected" : ""}" onclick="abrirConversacion(${conversation.id}, '${conversation.other_user.nombre.replace(/'/g, "\\'")}')">
-            <strong>${conversation.other_user.apodo || conversation.other_user.nombre}</strong>
+          <button class="conversation-item ${conversation.id === activeConversationId ? "selected" : ""}" onclick="abrirConversacion(${conversation.id}, '${(conversation.other_user.apodo || conversation.other_user.nombre).replace(/'/g, "\\'")}')">
+            <div class="conversation-line">
+              <strong>${conversation.other_user.apodo || conversation.other_user.nombre}</strong>
+              ${conversation.unread_count ? `<span class="mini-badge">${conversation.unread_count}</span>` : ""}
+            </div>
             <small>${conversation.last_message ? conversation.last_message.content : "Sin mensajes todavía"}</small>
           </button>
         `).join("")}
@@ -165,6 +260,11 @@ async function abrirConversacion(id, name, refresh = true) {
     await cargarConversaciones();
   }
   await cargarMensajes();
+  await api("/api/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ conversation_id: id })
+  });
+  await cargarNotificaciones();
 }
 
 async function cargarMensajes() {
@@ -204,6 +304,7 @@ function startPolling() {
   pollHandle = setInterval(async () => {
     try {
       await cargarConversaciones();
+      await cargarNotificaciones();
       if (activeConversationId) {
         await cargarMensajes();
       }
@@ -245,6 +346,7 @@ async function refreshAll() {
   try {
     await cargarUsuarios();
     await cargarConversaciones();
+    await cargarNotificaciones();
   } catch (error) {
     document.getElementById("estado").textContent = error.message;
   }
@@ -252,6 +354,19 @@ async function refreshAll() {
 
 (async function init() {
   await refreshAll();
+  const pendingConversationId = localStorage.getItem("chatConversationId");
+  if (pendingConversationId) {
+    localStorage.removeItem("chatConversationId");
+    const conversations = await cargarConversaciones();
+    const selected = conversations.find((conversation) => conversation.id === Number(pendingConversationId));
+    if (selected) {
+      await abrirConversacion(
+        selected.id,
+        selected.other_user.apodo || selected.other_user.nombre,
+        false
+      );
+    }
+  }
   const pendingRecipientId = localStorage.getItem("chatRecipientId");
   if (pendingRecipientId) {
     localStorage.removeItem("chatRecipientId");
@@ -268,6 +383,13 @@ async function refreshAll() {
 window.addEventListener("beforeunload", () => {
   if (pollHandle) {
     clearInterval(pollHandle);
+  }
+});
+
+document.addEventListener("click", (event) => {
+  const anchor = document.querySelector(".notification-anchor");
+  if (anchor && !anchor.contains(event.target)) {
+    document.getElementById("notificationPanel").classList.add("hidden");
   }
 });
 </script>

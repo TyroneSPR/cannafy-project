@@ -47,7 +47,14 @@ def ensure_store() -> None:
 
     DATA_FILE.write_text(
         json.dumps(
-            {"users": [], "products": [], "sessions": [], "conversations": [], "posts": []},
+            {
+                "users": [],
+                "products": [],
+                "sessions": [],
+                "conversations": [],
+                "posts": [],
+                "notifications": [],
+            },
             indent=2,
         ),
         encoding="utf-8",
@@ -101,6 +108,7 @@ def read_store() -> dict[str, Any]:
     store.setdefault("sessions", [])
     store.setdefault("conversations", [])
     store.setdefault("posts", [])
+    store.setdefault("notifications", [])
     if ensure_default_admin(store):
         write_store(store)
     return store
@@ -160,6 +168,14 @@ def sanitize_conversation(
         "other_user": sanitize_user(other_user) if other_user else None,
         "updated_at": conversation["updated_at"],
         "last_message": sanitize_message(last_message, store) if last_message else None,
+        "unread_count": sum(
+            1
+            for notification in store.get("notifications", [])
+            if notification.get("user_id") == current_user_id
+            and notification.get("type") == "message"
+            and notification.get("conversation_id") == conversation["id"]
+            and not notification.get("read", False)
+        ),
     }
 
 
@@ -211,6 +227,22 @@ def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
         "imagen": product["imagen"],
         "descripcion": product["descripcion"],
         "created_at": product["created_at"],
+    }
+
+
+def sanitize_notification(notification: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]:
+    actor = next((user for user in store["users"] if user["id"] == notification["actor_id"]), None)
+    return {
+        "id": notification["id"],
+        "type": notification["type"],
+        "user_id": notification["user_id"],
+        "actor_id": notification["actor_id"],
+        "actor_nombre": actor.get("apodo", actor["nombre"]) if actor else "Usuario",
+        "actor_foto": actor.get("foto_perfil", "") if actor else "",
+        "conversation_id": notification.get("conversation_id"),
+        "message_preview": notification.get("message_preview", ""),
+        "read": bool(notification.get("read", False)),
+        "created_at": notification["created_at"],
     }
 
 
@@ -428,6 +460,47 @@ def list_users():
     ]
     users.sort(key=lambda item: (item["role"], item["nombre"].lower()))
     return jsonify(users)
+
+
+@app.get("/api/notifications")
+def list_notifications():
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Sesion invalida", 401)
+
+    notifications = [
+        sanitize_notification(notification, store)
+        for notification in sorted(
+            store.get("notifications", []),
+            key=lambda item: item["id"],
+            reverse=True,
+        )
+        if notification["user_id"] == current_user["id"]
+    ]
+    unread_count = sum(1 for item in notifications if not item["read"])
+    return jsonify({"items": notifications[:30], "unread_count": unread_count})
+
+
+@app.post("/api/notifications/read")
+def mark_notifications_read():
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Sesion invalida", 401)
+
+    data = request.get_json(silent=True) or {}
+    conversation_id = data.get("conversation_id")
+
+    for notification in store.get("notifications", []):
+        if notification["user_id"] != current_user["id"]:
+            continue
+        if conversation_id is not None and notification.get("conversation_id") != conversation_id:
+            continue
+        notification["read"] = True
+
+    write_store(store)
+    return jsonify({"mensaje": "Notificaciones actualizadas"})
 
 
 @app.get("/api/admin/users")
@@ -698,6 +771,15 @@ def get_messages(conversation_id: int):
     if not conversation or current_user["id"] not in conversation["participant_ids"]:
         return bad_request("Conversacion no encontrada", 404)
 
+    for notification in store.get("notifications", []):
+        if (
+            notification["user_id"] == current_user["id"]
+            and notification.get("type") == "message"
+            and notification.get("conversation_id") == conversation_id
+        ):
+            notification["read"] = True
+
+    write_store(store)
     messages = [sanitize_message(message, store) for message in conversation.get("messages", [])]
     return jsonify(messages)
 
@@ -731,6 +813,23 @@ def send_message(conversation_id: int):
     }
     conversation.setdefault("messages", []).append(message)
     conversation["updated_at"] = message["created_at"]
+    recipient_id = next(
+        participant_id
+        for participant_id in conversation["participant_ids"]
+        if participant_id != current_user["id"]
+    )
+    store.setdefault("notifications", []).append(
+        {
+            "id": next_id(store["notifications"]),
+            "type": "message",
+            "user_id": recipient_id,
+            "actor_id": current_user["id"],
+            "conversation_id": conversation_id,
+            "message_preview": content[:120],
+            "read": False,
+            "created_at": message["created_at"],
+        }
+    )
     write_store(store)
     return jsonify({"mensaje": "Mensaje enviado", "message": sanitize_message(message, store)}), 201
 

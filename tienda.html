@@ -26,6 +26,13 @@
         <span>Carrito</span>
         <strong id="cartCount">0</strong>
       </button>
+      <div class="notification-anchor">
+        <button class="secondary-btn notification-btn" onclick="toggleNotifications()">
+          <span>Notificaciones</span>
+          <strong id="notificationCount">0</strong>
+        </button>
+        <div id="notificationPanel" class="notification-panel hidden"></div>
+      </div>
       <div class="menu-anchor">
         <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
         <div id="quickMenu" class="quick-menu hidden">
@@ -132,6 +139,7 @@ const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let selectedProduct = null;
 let allProducts = [];
 let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+let lastUnreadCount = 0;
 
 if (!currentUser) {
   window.location.href = "login.html";
@@ -142,6 +150,90 @@ document.getElementById("busqueda").addEventListener("input", renderProductos);
 
 function toggleMenu() {
   document.getElementById("quickMenu").classList.toggle("hidden");
+}
+
+function getInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function avatarMarkup(name, photo) {
+  if (photo) {
+    return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
+  }
+  return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function toggleNotifications() {
+  document.getElementById("notificationPanel").classList.toggle("hidden");
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${localStorage.getItem("token")}`,
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+async function cargarNotificaciones() {
+  try {
+    const result = await api("/api/notifications");
+    const badge = document.getElementById("notificationCount");
+    const panel = document.getElementById("notificationPanel");
+    const count = result.unread_count || 0;
+    badge.textContent = String(count);
+    badge.classList.toggle("has-unread", count > 0);
+
+    if (!result.items.length) {
+      panel.innerHTML = "<p class='helper-text'>No tienes notificaciones nuevas.</p>";
+    } else {
+      panel.innerHTML = result.items.map((item) => `
+        <button class="notification-item ${item.read ? "" : "unread"}" onclick="abrirChatDesdeNotificacion(${item.conversation_id || 0})">
+          <span class="identity-row">
+            ${avatarMarkup(item.actor_nombre, item.actor_foto)}
+            <span>
+              <strong>${escapeHtml(item.actor_nombre)}</strong>
+              <small>${escapeHtml(item.message_preview || "Nueva actividad")}</small>
+            </span>
+          </span>
+        </button>
+      `).join("");
+    }
+
+    if (count > lastUnreadCount && "Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
+      const latest = result.items.find((item) => !item.read) || result.items[0];
+      new Notification(`Nuevo mensaje de ${latest.actor_nombre}`, {
+        body: latest.message_preview || "Tienes un nuevo mensaje."
+      });
+    }
+    lastUnreadCount = count;
+  } catch (error) {
+  }
+}
+
+function abrirChatDesdeNotificacion(conversationId) {
+  if (!conversationId) {
+    return;
+  }
+  localStorage.setItem("chatConversationId", String(conversationId));
+  window.location.href = "chat.html";
 }
 
 function scrollToProducts() {
@@ -285,6 +377,7 @@ function contactarDealerActual() {
     return;
   }
   localStorage.setItem("chatRecipientId", String(selectedProduct.dealer_id));
+  localStorage.setItem("chatRecipientName", selectedProduct.dealer_nombre || "");
   localStorage.setItem("chatDraft", `Hola, me interesa este producto: ${selectedProduct.nombre} (${selectedProduct.precio_mostrar || selectedProduct.precio}).`);
   window.location.href = "chat.html";
 }
@@ -304,6 +397,7 @@ function comprarDirecto() {
   }
 
   localStorage.setItem("chatRecipientId", String(dealerId));
+  localStorage.setItem("chatRecipientName", cart[0].dealer_nombre || "");
   localStorage.setItem("chatDraft", `Hola, quiero comprar estos productos:\n${resumen}\n\n¿Podemos coordinar la compra directa?`);
   window.location.href = "chat.html";
 }
@@ -316,12 +410,25 @@ function cerrarSesion() {
 
 saveCart();
 cargarProductos();
+cargarNotificaciones();
+
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission().catch(() => {});
+}
+
+setInterval(() => {
+  cargarNotificaciones();
+}, 4000);
 
 document.addEventListener("click", (event) => {
   const menu = document.getElementById("quickMenu");
   const anchor = document.querySelector(".menu-anchor");
   if (!anchor.contains(event.target)) {
     menu.classList.add("hidden");
+  }
+  const notificationAnchor = document.querySelector(".notification-anchor");
+  if (notificationAnchor && !notificationAnchor.contains(event.target)) {
+    document.getElementById("notificationPanel").classList.add("hidden");
   }
 });
 </script>
