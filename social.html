@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Zona social</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="store-shell">
+  <header class="store-header">
+    <div>
+      <h1>Zona social</h1>
+      <p class="helper-text">Presentaciones, conversaciones y comunidad entre usuarios.</p>
+    </div>
+    <div class="store-actions">
+      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+      <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+    </div>
+  </header>
+
+  <section class="panel-card">
+    <h2>Nueva publicación</h2>
+    <textarea id="postInput" class="social-textarea" placeholder="Comparte una idea, una presentación o abre un tema"></textarea>
+    <button id="publishBtn">Publicar</button>
+    <p id="estado" class="helper-text"></p>
+  </section>
+
+  <section class="panel-card">
+    <div class="panel-header">
+      <h2>Comunidad</h2>
+      <button class="secondary-btn" onclick="cargarPosts()">Actualizar</button>
+    </div>
+    <div id="postList" class="social-feed"></div>
+  </section>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+const token = localStorage.getItem("token");
+
+if (!token || !localStorage.getItem("currentUser")) {
+  window.location.href = "login.html";
+}
+
+document.getElementById("publishBtn").addEventListener("click", crearPost);
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+async function crearPost() {
+  const input = document.getElementById("postInput");
+  const content = input.value.trim();
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  if (!content) {
+    estado.textContent = "Escribe algo antes de publicar.";
+    return;
+  }
+
+  try {
+    await api("/api/posts", {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
+    input.value = "";
+    await cargarPosts();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+async function comentar(postId) {
+  const input = document.getElementById(`comment-${postId}`);
+  const content = input.value.trim();
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  if (!content) {
+    estado.textContent = "El comentario está vacío.";
+    return;
+  }
+
+  try {
+    await api(`/api/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
+    input.value = "";
+    await cargarPosts();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+async function cargarPosts() {
+  const container = document.getElementById("postList");
+  container.innerHTML = "<p class='helper-text'>Cargando publicaciones...</p>";
+
+  try {
+    const posts = await api("/api/posts");
+    if (!posts.length) {
+      container.innerHTML = "<p class='helper-text'>Todavía no hay publicaciones en la comunidad.</p>";
+      return;
+    }
+
+    container.innerHTML = posts.map((post) => `
+      <article class="social-post">
+        <div class="social-post-header">
+          <div>
+            <strong>${post.author_nombre}</strong>
+            <span class="product-meta">${post.author_role || "usuario"}</span>
+          </div>
+        </div>
+        <p>${post.content}</p>
+        <div class="comment-list">
+          ${post.comments.map((comment) => `
+            <div class="comment-item">
+              <strong>${comment.author_nombre}</strong>
+              <span>${comment.content}</span>
+            </div>
+          `).join("")}
+        </div>
+        <div class="comment-form">
+          <input id="comment-${post.id}" type="text" placeholder="Responder a esta publicación">
+          <button class="secondary-btn" onclick="comentar(${post.id})">Comentar</button>
+        </div>
+      </article>
+    `).join("");
+  } catch (error) {
+    container.innerHTML = `<p class='helper-text'>${error.message}</p>`;
+  }
+}
+
+cargarPosts();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Términos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="terms-page">
+
+<div class="container">
+  <h2>Términos y condiciones</h2>
+  <p class="helper-text">Lee el contenido completo para desbloquear el acceso al flujo de registro.</p>
+
+  <div class="terms-box" id="terms">
+    Al acceder, registrarte o utilizar esta plataforma, declaras que has leído y aceptado los términos de uso.
+    Cannafy funciona como una vitrina digital entre consumidores y dealers registrados. Cada usuario es responsable
+    por la información que comparte, por sus publicaciones y por las interacciones que realice dentro de la plataforma.
+    <br><br>
+    Cannafy no garantiza transacciones exitosas ni reemplaza la verificación individual de las partes. El uso de la
+    plataforma es voluntario y cada persona asume los riesgos asociados a publicar, comprar o vender. La empresa puede
+    moderar o retirar contenido que incumpla las reglas internas o afecte la seguridad del servicio.
+    <br><br>
+    Los datos solicitados durante el registro se usarán únicamente para operar la plataforma y mejorar la experiencia.
+    Al continuar, confirmas que entiendes estas condiciones y aceptas avanzar bajo tu propia responsabilidad.
+  </div>
+
+  <div class="contador" id="contador">Debes leer hasta el final para poder continuar.</div>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="aceptar" disabled>
+    <span>He leído y acepto los términos y condiciones.</span>
+  </label>
+
+  <button id="btnContinuar" class="is-disabled" disabled>Continuar</button>
+</div>
+
+<script>
+const terms = document.getElementById("terms");
+const checkbox = document.getElementById("aceptar");
+const boton = document.getElementById("btnContinuar");
+const contador = document.getElementById("contador");
+
+terms.addEventListener("scroll", () => {
+  const reachedEnd = terms.scrollTop + terms.clientHeight >= terms.scrollHeight - 4;
+  if (reachedEnd) {
+    checkbox.disabled = false;
+    contador.textContent = "Ya puedes aceptar los términos.";
+  }
+});
+
+checkbox.addEventListener("change", () => {
+  boton.disabled = !checkbox.checked;
+  boton.classList.toggle("is-disabled", !checkbox.checked);
+});
+
+boton.addEventListener("click", () => {
+  localStorage.setItem("terminos", "aceptado");
+  window.location.href = "rol.html";
+});
+</script>
+
+</body>
+</html>

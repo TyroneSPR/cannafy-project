@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Panel dealer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="dashboard-shell">
+  <aside class="sidebar">
+    <h2>Cannafy</h2>
+    <p id="dealerInfo" class="sidebar-copy"></p>
+    <button class="secondary-btn" onclick="window.location.href='tienda.html'">Ver tienda pública</button>
+    <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+    <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+    <button onclick="cerrarSesion()">Cerrar sesión</button>
+  </aside>
+
+  <main class="dashboard-main">
+    <section class="panel-card">
+      <h1>Publicar producto</h1>
+      <p>Sube productos a la vitrina para que los consumidores los encuentren.</p>
+
+      <div class="form-grid">
+        <input type="text" id="nombre" placeholder="Nombre del producto">
+        <input type="text" id="precio" placeholder="Precio">
+        <input type="text" id="descripcion" placeholder="Descripción corta">
+        <input type="url" id="imagen" placeholder="URL de imagen (opcional)">
+      </div>
+
+      <div class="upload-row">
+        <input type="file" id="imagenArchivo" accept="image/*">
+        <div class="image-preview-shell">
+          <img id="previewImagen" class="image-preview" alt="Vista previa del producto">
+          <p id="previewHint" class="helper-text">La miniatura se recortará a formato cuadrado automáticamente.</p>
+        </div>
+      </div>
+
+      <button id="btnGuardar">Publicar producto</button>
+      <p id="estado" class="helper-text"></p>
+    </section>
+
+    <section class="panel-card">
+      <div class="panel-header">
+        <h2>Mis publicaciones</h2>
+        <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
+      </div>
+      <div id="productos" class="productos-grid"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+const token = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+let imagenArchivoBase64 = "";
+
+if (!token || !currentUser || currentUser.role !== "dealer") {
+  window.location.href = "login.html";
+}
+
+document.getElementById("dealerInfo").textContent = `${currentUser.nombre} · ${currentUser.correo}`;
+document.getElementById("btnGuardar").addEventListener("click", crearProducto);
+document.getElementById("imagenArchivo").addEventListener("change", cargarArchivoImagen);
+document.getElementById("imagen").addEventListener("input", actualizarPreviewDesdeUrl);
+
+async function cargarArchivoImagen(event) {
+  const archivo = event.target.files[0];
+  if (!archivo) {
+    imagenArchivoBase64 = "";
+    actualizarPreview(document.getElementById("imagen").value.trim());
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    imagenArchivoBase64 = String(reader.result || "");
+    actualizarPreview(imagenArchivoBase64);
+  };
+  reader.readAsDataURL(archivo);
+}
+
+function actualizarPreviewDesdeUrl() {
+  if (imagenArchivoBase64) {
+    return;
+  }
+  actualizarPreview(document.getElementById("imagen").value.trim());
+}
+
+function actualizarPreview(src) {
+  const preview = document.getElementById("previewImagen");
+  const hint = document.getElementById("previewHint");
+
+  if (!src) {
+    preview.removeAttribute("src");
+    preview.style.display = "none";
+    hint.textContent = "La miniatura se recortará a formato cuadrado automáticamente.";
+    return;
+  }
+
+  preview.src = src;
+  preview.style.display = "block";
+  hint.textContent = "Vista previa cuadrada del producto.";
+}
+
+async function crearProducto() {
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  const payload = {
+    nombre: document.getElementById("nombre").value.trim(),
+    precio: document.getElementById("precio").value.trim(),
+    imagen: document.getElementById("imagen").value.trim(),
+    imagen_archivo: imagenArchivoBase64,
+    descripcion: document.getElementById("descripcion").value.trim()
+  };
+
+  try {
+    const response = await fetch(`${API_URL}/api/products`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      estado.textContent = result.error || "No se pudo publicar.";
+      return;
+    }
+
+    estado.textContent = "Producto publicado correctamente.";
+    document.getElementById("nombre").value = "";
+    document.getElementById("precio").value = "";
+    document.getElementById("imagen").value = "";
+    document.getElementById("descripcion").value = "";
+    document.getElementById("imagenArchivo").value = "";
+    imagenArchivoBase64 = "";
+    actualizarPreview("");
+    cargarProductos();
+  } catch (error) {
+    estado.textContent = "No se pudo conectar con la API.";
+  }
+}
+
+async function cargarProductos() {
+  const contenedor = document.getElementById("productos");
+  contenedor.innerHTML = "<p class='helper-text'>Cargando productos...</p>";
+
+  try {
+    const response = await fetch(`${API_URL}/api/products`);
+    const productos = await response.json();
+    const propios = productos.filter((item) => item.dealer_id === currentUser.id);
+
+    if (!propios.length) {
+      contenedor.innerHTML = "<p class='helper-text'>Aún no has publicado productos.</p>";
+      return;
+    }
+
+    contenedor.innerHTML = propios.map((producto) => `
+      <article class="product-card">
+        <img src="${producto.imagen}" alt="${producto.nombre}">
+        <div class="product-copy">
+          <h3>${producto.nombre}</h3>
+          <p>${producto.descripcion || "Sin descripción"}</p>
+          <strong>${producto.precio}</strong>
+        </div>
+        <button onclick="eliminarProducto(${producto.id})">Eliminar</button>
+      </article>
+    `).join("");
+  } catch (error) {
+    contenedor.innerHTML = "<p class='helper-text'>No se pudieron cargar los productos.</p>";
+  }
+}
+
+async function eliminarProducto(id) {
+  try {
+    const response = await fetch(`${API_URL}/api/products/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      document.getElementById("estado").textContent = result.error || "No se pudo eliminar.";
+      return;
+    }
+
+    document.getElementById("estado").textContent = "Producto eliminado.";
+    cargarProductos();
+  } catch (error) {
+    document.getElementById("estado").textContent = "No se pudo conectar con la API.";
+  }
+}
+
+async function cerrarSesion() {
+  try {
+    await fetch(`${API_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+  } catch (error) {
+  }
+
+  localStorage.removeItem("token");
+  localStorage.removeItem("currentUser");
+  window.location.href = "login.html";
+}
+
+cargarProductos();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Tienda</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="store-shell">
+  <header class="store-header">
+    <div>
+      <h1>Cannafy</h1>
+      <p id="bienvenida" class="helper-text"></p>
+    </div>
+    <div class="store-actions">
+      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+      <button class="secondary-btn" onclick="toggleCart()">Carrito <span id="cartCount">0</span></button>
+      <button class="secondary-btn" onclick="window.location.href='rol.html'">Nuevo registro</button>
+      <button onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <section class="store-hero">
+    <h2>Explora productos publicados por dealers</h2>
+    <p>Ahora puedes ver cada producto en detalle, agregarlo al carrito y contactar directo con el dealer.</p>
+  </section>
+
+  <section class="panel-card">
+    <div class="panel-header">
+      <h2>Productos disponibles</h2>
+      <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
+    </div>
+    <div id="productos" class="productos-grid"></div>
+  </section>
+</div>
+
+<aside id="cartPanel" class="cart-panel hidden">
+  <div class="panel-header">
+    <h2>Carrito</h2>
+    <button class="secondary-btn" onclick="toggleCart()">Cerrar</button>
+  </div>
+  <div id="cartItems" class="cart-items"></div>
+  <p id="cartEmpty" class="helper-text">Tu carrito está vacío.</p>
+  <button id="checkoutBtn" onclick="comprarDirecto()" disabled>Comprar directo con el dealer</button>
+</aside>
+
+<div id="productModal" class="modal hidden" onclick="cerrarDetalle(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="panel-header">
+      <h2 id="modalTitle">Detalle del producto</h2>
+      <button class="secondary-btn" onclick="cerrarDetalle()">Cerrar</button>
+    </div>
+    <div class="product-detail">
+      <img id="modalImage" class="product-detail-image" alt="Producto">
+      <div class="product-detail-copy">
+        <p id="modalDealer" class="product-meta"></p>
+        <p id="modalDescription"></p>
+        <strong id="modalPrice" class="detail-price"></strong>
+        <div class="detail-actions">
+          <button onclick="agregarActualAlCarrito()">Agregar al carrito</button>
+          <button class="secondary-btn" onclick="contactarDealerActual()">Hablar con dealer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+let selectedProduct = null;
+let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+if (!currentUser) {
+  window.location.href = "login.html";
+}
+
+document.getElementById("bienvenida").textContent = `Sesión activa: ${currentUser.nombre} (${currentUser.role})`;
+
+function saveCart() {
+  localStorage.setItem("cart", JSON.stringify(cart));
+  document.getElementById("cartCount").textContent = String(cart.length);
+  renderCart();
+}
+
+function renderCart() {
+  const itemsContainer = document.getElementById("cartItems");
+  const empty = document.getElementById("cartEmpty");
+  const checkout = document.getElementById("checkoutBtn");
+
+  if (!cart.length) {
+    itemsContainer.innerHTML = "";
+    empty.style.display = "block";
+    checkout.disabled = true;
+    return;
+  }
+
+  empty.style.display = "none";
+  checkout.disabled = false;
+  itemsContainer.innerHTML = cart.map((item, index) => `
+    <article class="cart-item">
+      <img src="${item.imagen}" alt="${item.nombre}">
+      <div>
+        <strong>${item.nombre}</strong>
+        <p>${item.precio}</p>
+        <small>${item.dealer_nombre}</small>
+      </div>
+      <button class="secondary-btn" onclick="quitarDelCarrito(${index})">Quitar</button>
+    </article>
+  `).join("");
+}
+
+function quitarDelCarrito(index) {
+  cart.splice(index, 1);
+  saveCart();
+}
+
+function toggleCart() {
+  document.getElementById("cartPanel").classList.toggle("hidden");
+}
+
+async function cargarProductos() {
+  const contenedor = document.getElementById("productos");
+  contenedor.innerHTML = "<p class='helper-text'>Cargando productos...</p>";
+
+  try {
+    const response = await fetch(`${API_URL}/api/products`);
+    const productos = await response.json();
+
+    if (!productos.length) {
+      contenedor.innerHTML = "<p class='helper-text'>Todavía no hay productos publicados.</p>";
+      return;
+    }
+
+    contenedor.innerHTML = productos.map((producto) => `
+      <article class="product-card">
+        <button class="product-image-button" onclick="verDetalle(${producto.id})">
+          <img src="${producto.imagen}" alt="${producto.nombre}">
+        </button>
+        <div class="product-copy">
+          <span class="product-meta">Publicado por ${producto.dealer_nombre}</span>
+          <h3>${producto.nombre}</h3>
+          <p>${producto.descripcion || "Sin descripción"}</p>
+          <strong>${producto.precio}</strong>
+        </div>
+        <div class="card-actions">
+          <button onclick="verDetalle(${producto.id})">Ver más</button>
+          <button class="secondary-btn" onclick="agregarDesdeListado(${producto.id})">Agregar al carrito</button>
+        </div>
+      </article>
+    `).join("");
+  } catch (error) {
+    contenedor.innerHTML = "<p class='helper-text'>No se pudieron cargar los productos.</p>";
+  }
+}
+
+async function verDetalle(productId) {
+  const response = await fetch(`${API_URL}/api/products/${productId}`);
+  const producto = await response.json();
+  selectedProduct = producto;
+
+  document.getElementById("modalTitle").textContent = producto.nombre;
+  document.getElementById("modalImage").src = producto.imagen;
+  document.getElementById("modalDealer").textContent = `Dealer: ${producto.dealer_nombre}`;
+  document.getElementById("modalDescription").textContent = producto.descripcion || "Sin descripción.";
+  document.getElementById("modalPrice").textContent = producto.precio;
+  document.getElementById("productModal").classList.remove("hidden");
+}
+
+function cerrarDetalle(event) {
+  if (event && event.target !== document.getElementById("productModal")) {
+    return;
+  }
+  document.getElementById("productModal").classList.add("hidden");
+}
+
+async function agregarDesdeListado(productId) {
+  const response = await fetch(`${API_URL}/api/products/${productId}`);
+  const producto = await response.json();
+  agregarProductoAlCarrito(producto);
+}
+
+function agregarActualAlCarrito() {
+  if (!selectedProduct) {
+    return;
+  }
+  agregarProductoAlCarrito(selectedProduct);
+}
+
+function agregarProductoAlCarrito(producto) {
+  cart.push(producto);
+  saveCart();
+}
+
+function contactarDealerActual() {
+  if (!selectedProduct) {
+    return;
+  }
+  localStorage.setItem("chatRecipientId", String(selectedProduct.dealer_id));
+  localStorage.setItem("chatDraft", `Hola, me interesa este producto: ${selectedProduct.nombre} (${selectedProduct.precio}).`);
+  window.location.href = "chat.html";
+}
+
+function comprarDirecto() {
+  if (!cart.length) {
+    return;
+  }
+
+  const dealerId = cart[0].dealer_id;
+  const sameDealer = cart.every((item) => item.dealer_id === dealerId);
+  const resumen = cart.map((item) => `- ${item.nombre} | ${item.precio}`).join("\n");
+
+  if (!sameDealer) {
+    alert("Por ahora el carrito solo puede cerrarse con productos de un mismo dealer. Limpia el carrito o agrupa por vendedor.");
+    return;
+  }
+
+  localStorage.setItem("chatRecipientId", String(dealerId));
+  localStorage.setItem(
+    "chatDraft",
+    `Hola, quiero comprar estos productos:\n${resumen}\n\n¿Podemos coordinar la compra directa?`
+  );
+  window.location.href = "chat.html";
+}
+
+function cerrarSesion() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("currentUser");
+  window.location.href = "login.html";
+}
+
+saveCart();
+cargarProductos();
+</script>
+
+</body>
+</html>

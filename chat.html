@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Mensajes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+
+<div class="chat-shell">
+  <aside class="panel-card chat-sidebar">
+    <div class="panel-header">
+      <h2>Personas y chats</h2>
+      <button class="secondary-btn" onclick="refreshAll()">Actualizar</button>
+    </div>
+    <div id="userList" class="user-list"></div>
+    <div id="conversationList" class="conversation-list"></div>
+  </aside>
+
+  <main class="panel-card chat-main">
+    <div class="panel-header">
+      <div>
+        <h1>Mensajes directos</h1>
+        <p id="chatTitle" class="helper-text">Selecciona una persona para abrir una conversación.</p>
+      </div>
+      <div class="store-actions">
+        <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+        <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+      </div>
+    </div>
+
+    <div id="messages" class="messages-panel">
+      <p class="helper-text">No hay mensajes todavía.</p>
+    </div>
+
+    <div class="composer">
+      <textarea id="messageInput" placeholder="Escribe un mensaje"></textarea>
+      <button id="sendBtn">Enviar</button>
+    </div>
+    <p id="estado" class="helper-text"></p>
+  </main>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+const token = localStorage.getItem("token");
+const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+let activeConversationId = null;
+let isRefreshingConversations = false;
+
+if (!token || !currentUser) {
+  window.location.href = "login.html";
+}
+
+document.getElementById("sendBtn").addEventListener("click", enviarMensaje);
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error inesperado");
+  }
+  return data;
+}
+
+async function cargarUsuarios() {
+  const users = await api("/api/users");
+  const container = document.getElementById("userList");
+
+  if (!users.length) {
+    container.innerHTML = "<p class='helper-text'>No hay otros usuarios registrados todavía.</p>";
+    return;
+  }
+
+  container.innerHTML = `
+    <h3 class="section-label">Iniciar chat</h3>
+    ${users.map((user) => `
+      <button class="user-chip" onclick="crearOAbrirChat(${user.id})">
+        <span>${user.nombre}</span>
+        <small>${user.role}</small>
+      </button>
+    `).join("")}
+  `;
+}
+
+async function cargarConversaciones() {
+  if (isRefreshingConversations) {
+    return [];
+  }
+  isRefreshingConversations = true;
+
+  try {
+    const conversations = await api("/api/conversations");
+    const container = document.getElementById("conversationList");
+
+    if (!conversations.length) {
+      container.innerHTML = "<p class='helper-text'>Aún no tienes conversaciones activas.</p>";
+    } else {
+      container.innerHTML = `
+        <h3 class="section-label">Chats activos</h3>
+        ${conversations.map((conversation) => `
+          <button class="conversation-item ${conversation.id === activeConversationId ? "selected" : ""}" onclick="abrirConversacion(${conversation.id}, '${conversation.other_user.nombre.replace(/'/g, "\\'")}')">
+            <strong>${conversation.other_user.nombre}</strong>
+            <small>${conversation.last_message ? conversation.last_message.content : "Sin mensajes todavía"}</small>
+          </button>
+        `).join("")}
+      `;
+    }
+
+    if (!activeConversationId && conversations.length) {
+      await abrirConversacion(conversations[0].id, conversations[0].other_user.nombre, false);
+    }
+
+    return conversations;
+  } finally {
+    isRefreshingConversations = false;
+  }
+}
+
+async function crearOAbrirChat(recipientId) {
+  try {
+    const result = await api("/api/conversations", {
+      method: "POST",
+      body: JSON.stringify({ recipient_id: recipientId })
+    });
+    activeConversationId = result.conversation.id;
+    document.getElementById("chatTitle").textContent = `Conversando con ${result.conversation.other_user.nombre}`;
+    await cargarConversaciones();
+    await cargarMensajes();
+  } catch (error) {
+    document.getElementById("estado").textContent = error.message;
+  }
+}
+
+async function abrirConversacion(id, name, refresh = true) {
+  activeConversationId = id;
+  document.getElementById("chatTitle").textContent = `Conversando con ${name}`;
+  if (refresh) {
+    await cargarConversaciones();
+  }
+  await cargarMensajes();
+}
+
+async function cargarMensajes() {
+  if (!activeConversationId) {
+    return;
+  }
+
+  try {
+    const messages = await api(`/api/conversations/${activeConversationId}/messages`);
+    const container = document.getElementById("messages");
+
+    if (!messages.length) {
+      container.innerHTML = "<p class='helper-text'>No hay mensajes todavía.</p>";
+      return;
+    }
+
+    container.innerHTML = messages.map((message) => `
+      <article class="message-bubble ${message.sender_id === currentUser.id ? "own" : ""}">
+        <span class="product-meta">${message.sender_nombre}</span>
+        <p>${message.content}</p>
+      </article>
+    `).join("");
+    container.scrollTop = container.scrollHeight;
+  } catch (error) {
+    document.getElementById("estado").textContent = error.message;
+  }
+}
+
+async function enviarMensaje() {
+  const input = document.getElementById("messageInput");
+  const content = input.value.trim();
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  if (!activeConversationId) {
+    estado.textContent = "Abre una conversación primero.";
+    return;
+  }
+
+  if (!content) {
+    estado.textContent = "Escribe un mensaje antes de enviar.";
+    return;
+  }
+
+  try {
+    await api(`/api/conversations/${activeConversationId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    });
+    input.value = "";
+    await cargarMensajes();
+    await cargarConversaciones();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+async function refreshAll() {
+  try {
+    await cargarUsuarios();
+    await cargarConversaciones();
+  } catch (error) {
+    document.getElementById("estado").textContent = error.message;
+  }
+}
+
+(async function init() {
+  await refreshAll();
+  const pendingRecipientId = localStorage.getItem("chatRecipientId");
+  if (pendingRecipientId) {
+    localStorage.removeItem("chatRecipientId");
+    await crearOAbrirChat(Number(pendingRecipientId));
+  }
+  const draft = localStorage.getItem("chatDraft");
+  if (draft) {
+    document.getElementById("messageInput").value = draft;
+    localStorage.removeItem("chatDraft");
+  }
+})();
+</script>
+
+</body>
+</html>
