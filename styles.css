@@ -34,7 +34,7 @@ body {
 body.terms-page {
   background:
     linear-gradient(rgba(5, 10, 7, 0.6), rgba(8, 14, 11, 0.9)),
-    url("terms-background.jpg");
+    url("https://raw.githubusercontent.com/TyroneSPR/cannafy-project/main/terms-background.jpg");
   background-size: cover;
   background-position: center;
 }
