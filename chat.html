@@ -26,6 +26,7 @@
       </div>
       <div class="store-actions">
         <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
+        <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
         <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
         <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
       </div>
@@ -44,7 +45,7 @@
 </div>
 
 <script>
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 let activeConversationId = null;

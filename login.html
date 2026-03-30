@@ -17,10 +17,11 @@
   <button id="btnLogin">Entrar</button>
   <p id="estado" class="helper-text"></p>
   <a class="text-link" href="rol.html">Crear una cuenta nueva</a>
+  <a class="text-link" href="acerca.html">Acerca de nosotros</a>
 </div>
 
 <script>
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = window.location.origin;
 
 const correoInput = document.getElementById("correo");
 const savedEmail = localStorage.getItem("lastRegisteredEmail");

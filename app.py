@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -15,6 +15,22 @@ CORS(app)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data.json"
+ALLOWED_STATIC_FILES = {
+    "index.html",
+    "rol.html",
+    "comprador.html",
+    "login.html",
+    "dealer-login.html",
+    "dealer-register.html",
+    "vendedor.html",
+    "tienda.html",
+    "chat.html",
+    "social.html",
+    "perfil.html",
+    "acerca.html",
+    "styles.css",
+    "terms-background.jpg",
+}
 
 
 def utc_now() -> str:
@@ -179,6 +195,11 @@ def bad_request(message: str, code: int = 400):
 
 @app.get("/")
 def home():
+    return send_from_directory(BASE_DIR, "index.html")
+
+
+@app.get("/api/health")
+def health():
     return jsonify(
         {
             "app": "Cannafy",
@@ -186,6 +207,13 @@ def home():
             "message": "API lista para trabajar",
         }
     )
+
+
+@app.get("/<path:filename>")
+def static_pages(filename: str):
+    if filename not in ALLOWED_STATIC_FILES:
+        return bad_request("Archivo no encontrado", 404)
+    return send_from_directory(BASE_DIR, filename)
 
 
 @app.post("/api/auth/register")
@@ -663,4 +691,4 @@ def add_comment(post_id: int):
 
 if __name__ == "__main__":
     ensure_store()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

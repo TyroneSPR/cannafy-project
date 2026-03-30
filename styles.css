@@ -121,6 +121,11 @@ body.dashboard-page {
   gap: 18px;
 }
 
+.legal-copy {
+  display: grid;
+  gap: 14px;
+}
+
 .profile-preview {
   display: grid;
   grid-template-columns: 110px 1fr;

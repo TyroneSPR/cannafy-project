@@ -9,7 +9,7 @@ def main() -> None:
     dealer_email = f"dealer-demo-{stamp}@cannafy.test"
     buyer_email = f"buyer-demo-{stamp}@cannafy.test"
 
-    print("health", client.get("/").status_code)
+    print("health", client.get("/api/health").status_code)
 
     register = client.post(
         "/api/auth/register",
