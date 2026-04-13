@@ -15,16 +15,13 @@ CORS(app)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data.json"
-DEFAULT_ADMIN_EMAIL = "tyronegonzalesg4@gmail.com"
-DEFAULT_ADMIN_PASSWORD = "Macnanime26."
-DEFAULT_ADMIN_NAME = "Tyrone"
+DEFAULT_ADMIN_EMAIL = "cannafy.pe@gmail.com"
+DEFAULT_ADMIN_PASSWORD = "123456"
+DEFAULT_ADMIN_NAME = "ADM CANNAFY"
 ALLOWED_STATIC_FILES = {
     "index.html",
-    "rol.html",
-    "comprador.html",
-    "login.html",
-    "dealer-login.html",
-    "dealer-register.html",
+    "register.html",
+    "forgot-password.html",
     "vendedor.html",
     "tienda.html",
     "chat.html",
@@ -35,6 +32,7 @@ ALLOWED_STATIC_FILES = {
     "admin.html",
     "acerca.html",
     "styles.css",
+    "cannafy-logo.png",
     "terms-background.jpg",
 }
 
@@ -66,7 +64,11 @@ def ensure_store() -> None:
 
 def ensure_default_admin(store: dict[str, Any]) -> bool:
     existing_admin = next(
-        (user for user in store["users"] if user["correo"] == DEFAULT_ADMIN_EMAIL),
+        (
+            user
+            for user in store["users"]
+            if user.get("role") == "admin" or user.get("correo") == DEFAULT_ADMIN_EMAIL
+        ),
         None,
     )
     if existing_admin:
@@ -74,8 +76,23 @@ def ensure_default_admin(store: dict[str, Any]) -> bool:
         if existing_admin.get("role") != "admin":
             existing_admin["role"] = "admin"
             changed = True
-        if existing_admin.get("apodo") != "ADM":
-            existing_admin["apodo"] = "ADM"
+        if existing_admin.get("nombre") != DEFAULT_ADMIN_NAME:
+            existing_admin["nombre"] = DEFAULT_ADMIN_NAME
+            changed = True
+        if existing_admin.get("apodo") != "ADM CANNAFY":
+            existing_admin["apodo"] = "ADM CANNAFY"
+            changed = True
+        if existing_admin.get("correo") != DEFAULT_ADMIN_EMAIL:
+            existing_admin["correo"] = DEFAULT_ADMIN_EMAIL
+            changed = True
+        if existing_admin.get("foto_perfil") != "cannafy-logo.png":
+            existing_admin["foto_perfil"] = "cannafy-logo.png"
+            changed = True
+        if existing_admin.get("bio") != "Cuenta administrativa compartida de Cannafy.":
+            existing_admin["bio"] = "Cuenta administrativa compartida de Cannafy."
+            changed = True
+        if not password_matches(existing_admin, DEFAULT_ADMIN_PASSWORD):
+            existing_admin["password_hash"] = generate_password_hash(DEFAULT_ADMIN_PASSWORD)
             changed = True
         if "banned" not in existing_admin:
             existing_admin["banned"] = False
@@ -87,9 +104,9 @@ def ensure_default_admin(store: dict[str, Any]) -> bool:
             "id": next_id(store["users"]),
             "role": "admin",
             "nombre": DEFAULT_ADMIN_NAME,
-            "apodo": "ADM",
-            "bio": "Administrador principal de Cannafy.",
-            "foto_perfil": "",
+            "apodo": "ADM CANNAFY",
+            "bio": "Cuenta administrativa compartida de Cannafy.",
+            "foto_perfil": "cannafy-logo.png",
             "correo": DEFAULT_ADMIN_EMAIL,
             "telefono": "",
             "edad": None,
@@ -207,6 +224,26 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
         comment_author = next(
             (user for user in store["users"] if user["id"] == comment["author_id"]), None
         )
+        comment_reactions = comment.get("reactions", {})
+        replies = []
+        for reply in comment.get("replies", []):
+            reply_author = next(
+                (user for user in store["users"] if user["id"] == reply["author_id"]), None
+            )
+            replies.append(
+                {
+                    "id": reply["id"],
+                    "author_id": reply["author_id"],
+                    "author_nombre": reply_author.get("apodo", reply_author["nombre"])
+                    if reply_author
+                    else "Usuario",
+                    "author_foto": reply_author.get("foto_perfil", "") if reply_author else "",
+                    "author_verified": bool(reply_author and reply_author["role"] == "admin"),
+                    "content": reply["content"],
+                    "created_at": reply["created_at"],
+                }
+            )
+
         comments.append(
             {
                 "id": comment["id"],
@@ -218,6 +255,19 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
                 "author_verified": bool(comment_author and comment_author["role"] == "admin"),
                 "content": comment["content"],
                 "created_at": comment["created_at"],
+                "replies": replies,
+                "reactions": {
+                    "heart": len(comment_reactions.get("heart", [])),
+                    "fire": len(comment_reactions.get("fire", [])),
+                },
+                "user_reaction": next(
+                    (
+                        reaction_name
+                        for reaction_name, user_ids in comment_reactions.items()
+                        if current_user and current_user["id"] in user_ids
+                    ),
+                    None,
+                ),
             }
         )
 
@@ -229,11 +279,11 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
         "author_foto": author.get("foto_perfil", "") if author else "",
         "verified": bool(author and author["role"] == "admin"),
         "content": post["content"],
+        "imagen": post.get("imagen", ""),
         "created_at": post["created_at"],
         "reactions": {
-            "like": len(reactions.get("like", [])),
+            "heart": len(reactions.get("heart", [])),
             "fire": len(reactions.get("fire", [])),
-            "idea": len(reactions.get("idea", [])),
         },
         "user_reaction": next(
             (
@@ -250,19 +300,29 @@ def sanitize_post(post: dict[str, Any], store: dict[str, Any]) -> dict[str, Any]
 def sanitize_product(product: dict[str, Any]) -> dict[str, Any]:
     oferta_activa = bool(product.get("oferta_activa"))
     precio_oferta = str(product.get("precio_oferta", "")).strip()
+    categoria = str(product.get("categoria", "accesorios")).strip().lower() or "accesorios"
+    especificaciones = product.get("especificaciones", {}) or {}
+    colores = [str(item).strip() for item in product.get("colores", []) if str(item).strip()]
     return {
         "id": product["id"],
         "dealer_id": product["dealer_id"],
-        "dealer_nombre": product["dealer_nombre"],
+        "dealer_nombre": "Cannafy" if product.get("dealer_verified") else product["dealer_nombre"],
         "dealer_foto": product.get("dealer_foto", ""),
         "dealer_verified": bool(product.get("dealer_verified", False)),
         "nombre": product["nombre"],
+        "categoria": categoria,
         "precio": product["precio"],
         "oferta_activa": oferta_activa,
         "precio_oferta": precio_oferta,
         "precio_mostrar": precio_oferta if oferta_activa and precio_oferta else product["precio"],
         "imagen": product["imagen"],
         "descripcion": product["descripcion"],
+        "colores": colores,
+        "especificaciones": {
+            "material": str(especificaciones.get("material", "")).strip(),
+            "tamano": str(especificaciones.get("tamano", "")).strip(),
+            "contenido": str(especificaciones.get("contenido", "")).strip(),
+        },
         "dealer_rating": product.get("dealer_rating", {"average": 0, "count": 0}),
         "created_at": product["created_at"],
     }
@@ -333,8 +393,56 @@ def validate_email(value: str) -> bool:
     return "@" in value and "." in value
 
 
+def normalize_phone(value: str) -> str:
+    cleaned = "".join(char for char in str(value).strip() if char.isdigit() or char == "+")
+    if cleaned.count("+") > 1:
+        return ""
+    if "+" in cleaned and not cleaned.startswith("+"):
+        return ""
+    return cleaned
+
+
+def validate_phone(value: str) -> bool:
+    normalized = normalize_phone(value)
+    digits = normalized.replace("+", "")
+    return len(digits) >= 7
+
+
+def find_user_by_identifier(identifier: str, store: dict[str, Any]) -> dict[str, Any] | None:
+    normalized_identifier = identifier.strip().lower()
+    normalized_phone = normalize_phone(identifier)
+    return next(
+        (
+            user
+            for user in store["users"]
+            if user.get("correo", "").strip().lower() == normalized_identifier
+            or normalize_phone(user.get("telefono", "")) == normalized_phone
+        ),
+        None,
+    )
+
+
+def password_matches(user: dict[str, Any], password: str) -> bool:
+    password_hash = user.get("password_hash", "")
+    if not password_hash:
+        return False
+    try:
+        return check_password_hash(password_hash, password)
+    except ValueError:
+        return False
+
+
 def bad_request(message: str, code: int = 400):
     return jsonify({"error": message}), code
+
+
+def create_session(store: dict[str, Any], user: dict[str, Any]) -> str:
+    token = secrets.token_hex(24)
+    store["sessions"] = [item for item in store["sessions"] if item["user_id"] != user["id"]]
+    store["sessions"].append(
+        {"token": token, "user_id": user["id"], "created_at": utc_now()}
+    )
+    return token
 
 
 @app.get("/")
@@ -368,8 +476,8 @@ def register():
     nombre = str(data.get("nombre", "")).strip()
     correo = str(data.get("correo", "")).strip().lower()
     password = str(data.get("password", ""))
-    telefono = str(data.get("telefono", "")).strip()
-    acepto_terminos = bool(data.get("acepto_terminos"))
+    telefono = normalize_phone(data.get("telefono", ""))
+    acepto_terminos = bool(data.get("acepto_terminos", True))
     edad = data.get("edad")
     documento = str(data.get("documento", "")).strip()
 
@@ -377,12 +485,14 @@ def register():
         return bad_request("Rol invalido")
     if not nombre or len(nombre) > 24:
         return bad_request("Nombre invalido")
-    if not validate_email(correo):
+    if correo and not validate_email(correo):
         return bad_request("Correo invalido")
+    if telefono and not validate_phone(telefono):
+        return bad_request("Telefono invalido")
+    if not correo and not telefono:
+        return bad_request("Debes indicar un correo o telefono")
     if len(password) < 6:
         return bad_request("La contrasena debe tener minimo 6 caracteres")
-    if not telefono:
-        return bad_request("Telefono requerido")
     if not acepto_terminos:
         return bad_request("Debes aceptar los terminos")
 
@@ -401,8 +511,10 @@ def register():
 
     store = read_store()
 
-    if any(user["correo"] == correo for user in store["users"]):
+    if correo and any(user.get("correo") == correo for user in store["users"]):
         return bad_request("Ya existe una cuenta con ese correo", 409)
+    if telefono and any(normalize_phone(user.get("telefono", "")) == telefono for user in store["users"]):
+        return bad_request("Ya existe una cuenta con ese telefono", 409)
 
     user = {
         "id": next_id(store["users"]),
@@ -431,28 +543,43 @@ def register():
 @app.post("/api/auth/login")
 def login():
     data = request.get_json(silent=True) or {}
-    correo = str(data.get("correo", "")).strip().lower()
+    identifier = str(data.get("identifier", data.get("correo", data.get("telefono", "")))).strip()
     password = str(data.get("password", ""))
 
-    if not validate_email(correo) or not password:
+    if not identifier or not password:
         return bad_request("Credenciales incompletas")
 
     store = read_store()
-    user = next((item for item in store["users"] if item["correo"] == correo), None)
+    user = find_user_by_identifier(identifier, store)
 
-    if not user or not check_password_hash(user["password_hash"], password):
+    if not user or not password_matches(user, password):
         return bad_request("Credenciales incorrectas", 401)
     if user.get("banned"):
         return bad_request("Tu cuenta fue suspendida por administracion", 403)
 
-    token = secrets.token_hex(24)
-    store["sessions"] = [item for item in store["sessions"] if item["user_id"] != user["id"]]
-    store["sessions"].append(
-        {"token": token, "user_id": user["id"], "created_at": utc_now()}
-    )
+    token = create_session(store, user)
     write_store(store)
 
     return jsonify({"mensaje": "Login correcto", "token": token, "user": sanitize_user(user)})
+
+
+@app.post("/api/auth/forgot-password")
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    identifier = str(data.get("identifier", "")).strip()
+    new_password = str(data.get("new_password", ""))
+
+    if not identifier or len(new_password) < 6:
+        return bad_request("Datos incompletos")
+
+    store = read_store()
+    user = find_user_by_identifier(identifier, store)
+    if not user:
+        return bad_request("No encontramos una cuenta con ese acceso", 404)
+
+    user["password_hash"] = generate_password_hash(new_password)
+    write_store(store)
+    return jsonify({"mensaje": "Contrasena actualizada"})
 
 
 @app.get("/api/auth/me")
@@ -501,6 +628,31 @@ def update_profile():
     return jsonify({"mensaje": "Perfil actualizado", "user": sanitize_user(user)})
 
 
+@app.put("/api/auth/security/password")
+def update_password():
+    store = read_store()
+    user = get_current_user(store)
+    if not user:
+        return bad_request("Sesion invalida", 401)
+
+    data = request.get_json(silent=True) or {}
+    current_password = str(data.get("current_password", ""))
+    new_password = str(data.get("new_password", ""))
+
+    if not current_password or not new_password:
+        return bad_request("Completa ambas contraseñas")
+    if not password_matches(user, current_password):
+        return bad_request("La contraseña actual no es correcta", 403)
+    if len(new_password) < 6:
+        return bad_request("La nueva contraseña debe tener minimo 6 caracteres")
+    if password_matches(user, new_password):
+        return bad_request("La nueva contraseña debe ser diferente")
+
+    user["password_hash"] = generate_password_hash(new_password)
+    write_store(store)
+    return jsonify({"mensaje": "Contraseña actualizada"})
+
+
 @app.get("/api/users")
 def list_users():
     store = read_store()
@@ -534,6 +686,7 @@ def get_user_profile(user_id: int):
         for product in sorted(store["products"], key=lambda item: item["id"], reverse=True)
         if product["dealer_id"] == user_id
     ]
+    post_count = sum(1 for post in store.get("posts", []) if post.get("author_id") == user_id)
     if user["role"] == "dealer":
         rating = build_dealer_rating(user_id, store)
         my_rating = next(
@@ -552,6 +705,12 @@ def get_user_profile(user_id: int):
         {
             "user": user_data,
             "products": dealer_products,
+            "stats": {
+                "posts": post_count,
+                "followers": 0,
+                "following": 0,
+                "products": len(dealer_products),
+            },
             "rating": rating,
             "my_rating": my_rating,
         }
@@ -779,8 +938,8 @@ def create_product():
     user = get_current_user(store)
     if not user:
         return bad_request("Debes iniciar sesion", 401)
-    if user["role"] != "dealer":
-        return bad_request("Solo los dealers pueden publicar productos", 403)
+    if user["role"] not in {"dealer", "admin"}:
+        return bad_request("Solo las cuentas de tienda pueden publicar productos", 403)
 
     data = request.get_json(silent=True) or {}
     nombre = str(data.get("nombre", "")).strip()
@@ -788,11 +947,19 @@ def create_product():
     imagen = str(data.get("imagen", "")).strip()
     imagen_archivo = str(data.get("imagen_archivo", "")).strip()
     descripcion = str(data.get("descripcion", "")).strip()
+    categoria = str(data.get("categoria", "")).strip().lower()
     oferta_activa = bool(data.get("oferta_activa"))
     precio_oferta = str(data.get("precio_oferta", "")).strip()
+    colores = [str(item).strip() for item in data.get("colores", []) if str(item).strip()]
+    especificaciones = data.get("especificaciones", {}) or {}
+    material = str(especificaciones.get("material", "")).strip()
+    tamano = str(especificaciones.get("tamano", "")).strip()
+    contenido = str(especificaciones.get("contenido", "")).strip()
 
     if not nombre or len(nombre) > 60:
         return bad_request("Nombre de producto invalido")
+    if categoria not in {"papeles", "grinders", "pipas", "encendedores", "accesorios"}:
+        return bad_request("Categoria invalida")
     if not precio:
         return bad_request("Precio requerido")
     imagen_final = imagen_archivo or imagen
@@ -805,6 +972,12 @@ def create_product():
         return bad_request("La imagen debe ser una URL valida o un archivo de imagen")
     if len(descripcion) > 180:
         return bad_request("Descripcion demasiado larga")
+    if len(colores) > 8:
+        return bad_request("Demasiadas opciones de color")
+    if any(len(item) > 30 for item in colores):
+        return bad_request("Cada color debe ser corto")
+    if len(material) > 50 or len(tamano) > 50 or len(contenido) > 80:
+        return bad_request("Las especificaciones son demasiado largas")
     if oferta_activa and not precio_oferta:
         return bad_request("Debes indicar un precio de oferta")
 
@@ -816,11 +989,18 @@ def create_product():
         "dealer_rating": build_dealer_rating(user["id"], store),
         "dealer_verified": user["role"] == "admin",
         "nombre": nombre,
+        "categoria": categoria,
         "precio": precio,
         "oferta_activa": oferta_activa,
         "precio_oferta": precio_oferta,
         "imagen": imagen_final,
         "descripcion": descripcion,
+        "colores": colores,
+        "especificaciones": {
+            "material": material,
+            "tamano": tamano,
+            "contenido": contenido,
+        },
         "created_at": utc_now(),
     }
     store["products"].append(product)
@@ -835,8 +1015,8 @@ def update_product(product_id: int):
     user = get_current_user(store)
     if not user:
         return bad_request("Debes iniciar sesion", 401)
-    if user["role"] != "dealer":
-        return bad_request("Solo los dealers pueden modificar productos", 403)
+    if user["role"] not in {"dealer", "admin"}:
+        return bad_request("Solo las cuentas de tienda pueden modificar productos", 403)
 
     product = next((item for item in store["products"] if item["id"] == product_id), None)
     if not product:
@@ -848,23 +1028,44 @@ def update_product(product_id: int):
     nombre = str(data.get("nombre", product["nombre"])).strip()
     precio = str(data.get("precio", product["precio"])).strip()
     descripcion = str(data.get("descripcion", product.get("descripcion", ""))).strip()
+    categoria = str(data.get("categoria", product.get("categoria", "accesorios"))).strip().lower()
     oferta_activa = bool(data.get("oferta_activa", product.get("oferta_activa", False)))
     precio_oferta = str(data.get("precio_oferta", product.get("precio_oferta", ""))).strip()
+    colores = [str(item).strip() for item in data.get("colores", product.get("colores", [])) if str(item).strip()]
+    especificaciones = data.get("especificaciones", product.get("especificaciones", {})) or {}
+    material = str(especificaciones.get("material", "")).strip()
+    tamano = str(especificaciones.get("tamano", "")).strip()
+    contenido = str(especificaciones.get("contenido", "")).strip()
 
     if not nombre or len(nombre) > 60:
         return bad_request("Nombre de producto invalido")
+    if categoria not in {"papeles", "grinders", "pipas", "encendedores", "accesorios"}:
+        return bad_request("Categoria invalida")
     if not precio:
         return bad_request("Precio requerido")
     if len(descripcion) > 180:
         return bad_request("Descripcion demasiado larga")
+    if len(colores) > 8:
+        return bad_request("Demasiadas opciones de color")
+    if any(len(item) > 30 for item in colores):
+        return bad_request("Cada color debe ser corto")
+    if len(material) > 50 or len(tamano) > 50 or len(contenido) > 80:
+        return bad_request("Las especificaciones son demasiado largas")
     if oferta_activa and not precio_oferta:
         return bad_request("Debes indicar un precio de oferta")
 
     product["nombre"] = nombre
+    product["categoria"] = categoria
     product["precio"] = precio
     product["descripcion"] = descripcion
     product["oferta_activa"] = oferta_activa
     product["precio_oferta"] = precio_oferta
+    product["colores"] = colores
+    product["especificaciones"] = {
+        "material": material,
+        "tamano": tamano,
+        "contenido": contenido,
+    }
     product["dealer_rating"] = build_dealer_rating(user["id"], store)
     product["dealer_verified"] = user["role"] == "admin"
     write_store(store)
@@ -882,7 +1083,7 @@ def delete_product(product_id: int):
     product = next((item for item in store["products"] if item["id"] == product_id), None)
     if not product:
         return bad_request("Producto no encontrado", 404)
-    if user["role"] != "dealer" or product["dealer_id"] != user["id"]:
+    if user["role"] not in {"dealer", "admin"} or product["dealer_id"] != user["id"]:
         return bad_request("No puedes eliminar este producto", 403)
 
     store["products"] = [item for item in store["products"] if item["id"] != product_id]
@@ -1047,17 +1248,23 @@ def create_post():
 
     data = request.get_json(silent=True) or {}
     content = str(data.get("content", "")).strip()
+    imagen = str(data.get("imagen", "")).strip()
     if not content:
         return bad_request("La publicacion no puede estar vacia")
     if len(content) > 500:
         return bad_request("La publicacion es demasiado larga")
+    if imagen and not (
+        imagen.startswith(("http://", "https://")) or imagen.startswith("data:image/")
+    ):
+        return bad_request("La imagen debe ser una URL valida o una imagen subida")
 
     post = {
         "id": next_id(store["posts"]),
         "author_id": current_user["id"],
         "content": content,
+        "imagen": imagen,
         "created_at": utc_now(),
-        "reactions": {"like": [], "fire": [], "idea": []},
+        "reactions": {"heart": [], "fire": []},
         "comments": [],
     }
     store["posts"].append(post)
@@ -1078,11 +1285,11 @@ def react_to_post(post_id: int):
 
     data = request.get_json(silent=True) or {}
     reaction = str(data.get("reaction", "")).strip().lower()
-    if reaction not in {"like", "fire", "idea"}:
+    if reaction not in {"heart", "fire"}:
         return bad_request("Reaccion invalida")
 
-    post.setdefault("reactions", {"like": [], "fire": [], "idea": []})
-    for reaction_name in ("like", "fire", "idea"):
+    post.setdefault("reactions", {"heart": [], "fire": []})
+    for reaction_name in ("heart", "fire"):
         post["reactions"].setdefault(reaction_name, [])
         if current_user["id"] in post["reactions"][reaction_name]:
             post["reactions"][reaction_name] = [
@@ -1109,20 +1316,79 @@ def add_comment(post_id: int):
 
     data = request.get_json(silent=True) or {}
     content = str(data.get("content", "")).strip()
+    parent_comment_id = data.get("parent_comment_id")
     if not content:
         return bad_request("El comentario no puede estar vacio")
     if len(content) > 280:
         return bad_request("El comentario es demasiado largo")
 
-    comment = {
-        "id": next_id(post.get("comments", [])),
-        "author_id": current_user["id"],
-        "content": content,
-        "created_at": utc_now(),
-    }
-    post.setdefault("comments", []).append(comment)
+    if parent_comment_id is not None:
+        try:
+            parent_comment_id = int(parent_comment_id)
+        except (TypeError, ValueError):
+            return bad_request("Comentario base invalido")
+
+    if parent_comment_id is None:
+        comment = {
+            "id": next_id(post.get("comments", [])),
+            "author_id": current_user["id"],
+            "content": content,
+            "created_at": utc_now(),
+            "reactions": {"heart": [], "fire": []},
+            "replies": [],
+        }
+        post.setdefault("comments", []).append(comment)
+    else:
+        comment = next((item for item in post.get("comments", []) if item["id"] == parent_comment_id), None)
+        if not comment:
+            return bad_request("Comentario no encontrado", 404)
+        reply = {
+            "id": next_id(comment.get("replies", [])),
+            "author_id": current_user["id"],
+            "content": content,
+            "created_at": utc_now(),
+        }
+        comment.setdefault("replies", []).append(reply)
+
     write_store(store)
     return jsonify({"mensaje": "Comentario agregado", "post": sanitize_post(post, store)}), 201
+
+
+@app.post("/api/posts/<int:post_id>/comments/<int:comment_id>/reactions")
+def react_to_comment(post_id: int, comment_id: int):
+    store = read_store()
+    current_user = get_current_user(store)
+    if not current_user:
+        return bad_request("Debes iniciar sesion", 401)
+
+    post = next((item for item in store["posts"] if item["id"] == post_id), None)
+    if not post:
+        return bad_request("Publicacion no encontrada", 404)
+
+    comment = next((item for item in post.get("comments", []) if item["id"] == comment_id), None)
+    if not comment:
+        return bad_request("Comentario no encontrado", 404)
+
+    data = request.get_json(silent=True) or {}
+    reaction = str(data.get("reaction", "")).strip().lower()
+    if reaction not in {"heart", "fire"}:
+        return bad_request("Reaccion invalida")
+
+    comment.setdefault("reactions", {"heart": [], "fire": []})
+    for reaction_name in ("heart", "fire"):
+        comment["reactions"].setdefault(reaction_name, [])
+        if current_user["id"] in comment["reactions"][reaction_name]:
+            comment["reactions"][reaction_name] = [
+                user_id
+                for user_id in comment["reactions"][reaction_name]
+                if user_id != current_user["id"]
+            ]
+
+    if data.get("toggle_off") is not True:
+        comment["reactions"][reaction].append(current_user["id"])
+
+    write_store(store)
+    return jsonify({"mensaje": "Reaccion actualizada", "post": sanitize_post(post, store)})
 
 
 if __name__ == "__main__":

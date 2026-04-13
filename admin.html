@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cannafy | Panel ADM</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
@@ -11,13 +12,19 @@
 <div class="store-shell">
   <header class="store-header">
     <div>
-      <h1>Panel ADM</h1>
-      <p class="helper-text">Gestiona la comunidad, revisa cuentas activas y controla suspensiones.</p>
+      <div class="brand-lockup">
+        <span class="brand-badge"><img src="cannafy-logo.png" alt="Logo de Cannafy"></span>
+        <div>
+          <h1>Panel ADM</h1>
+          <p class="helper-text">Gestiona la tienda, revisa cuentas activas y cuida el ambiente de la Cannacrew.</p>
+        </div>
+      </div>
     </div>
     <div class="store-actions">
-      <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
+      <button class="secondary-btn" onclick="window.location.href='perfil.html'">Perfil de Cannafy</button>
+      <button class="secondary-btn" onclick="window.location.href='vendedor.html'">Gestionar productos</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
-      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Cannacrew's</button>
       <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportes</button>
       <button class="secondary-btn" id="logoutBtn">Salir</button>
     </div>
@@ -29,7 +36,7 @@
       <div>
         <h2 id="adminName">ADM</h2>
         <p class="product-meta">Administrador de Cannafy</p>
-        <p class="helper-text">Desde aquí puedes banear y desbanear usuarios cuando incumplan las normas.</p>
+        <p class="helper-text">Desde aquí puedes revisar cuentas y moderar la experiencia cuando haga falta.</p>
       </div>
     </div>
   </section>
@@ -38,7 +45,7 @@
     <div class="section-heading">
       <div>
         <h2>Usuarios registrados</h2>
-        <p class="helper-text">Puedes suspender cuentas y también rehabilitarlas cuando corresponda.</p>
+        <p class="helper-text">Por ahora aquí entrarían principalmente compradores. Más adelante también podremos activar vendedores externos.</p>
       </div>
       <button class="secondary-btn" id="refreshBtn">Actualizar</button>
     </div>
@@ -62,9 +69,10 @@
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
 
 if (!token || !currentUser || currentUser.role !== "admin") {
-  window.location.href = "login.html";
+      window.location.href = "index.html";
 }
 
 document.getElementById("refreshBtn").addEventListener("click", cargarUsuarios);
@@ -76,6 +84,9 @@ function setEstado(message) {
 }
 
 async function api(path, options = {}) {
+  if (IS_LOCAL_FILE) {
+    throw new Error("Modo local sin API");
+  }
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
@@ -94,8 +105,8 @@ async function api(path, options = {}) {
 
 function roleLabel(role) {
   if (role === "admin") return "ADM";
-  if (role === "dealer") return "Dealer";
-  return "Consumidor";
+  if (role === "dealer") return "Tienda";
+  return "Cannacrew";
 }
 
 function escapeHtml(value) {
@@ -121,8 +132,9 @@ function avatarMarkup(name, photo) {
 function pintarCabecera() {
   document.getElementById("adminName").innerHTML = `${currentUser.apodo || "ADM"} <span class="verified-check">✔</span>`;
   const avatar = document.getElementById("adminAvatar");
-  if (currentUser.foto_perfil) {
-    avatar.style.backgroundImage = `url("${currentUser.foto_perfil}")`;
+  const adminPhoto = currentUser.foto_perfil || "cannafy-logo.png";
+  if (adminPhoto) {
+    avatar.style.backgroundImage = `url("${adminPhoto}")`;
     avatar.textContent = "";
     avatar.classList.remove("empty", "avatar-fallback");
   } else {
@@ -171,6 +183,23 @@ function renderUsers(users) {
 
 async function cargarUsuarios() {
   setEstado("Cargando usuarios...");
+  if (IS_LOCAL_FILE) {
+    const users = JSON.parse(localStorage.getItem("localAuthUsers") || "[]")
+      .filter((user) => user.role !== "admin")
+      .map((user) => ({
+        id: user.id,
+        role: user.role,
+        apodo: user.apodo,
+        nombre: user.nombre,
+        correo: user.identifier.includes("@") ? user.identifier : "",
+        foto_perfil: user.foto_perfil || "",
+        bio: user.bio || "",
+        banned: false
+      }));
+    renderUsers(users);
+    setEstado(`Usuarios locales cargados: ${users.length}`);
+    return;
+  }
   try {
     const users = await api("/api/admin/users");
     renderUsers(users);
@@ -183,6 +212,10 @@ async function cargarUsuarios() {
 async function cargarReportes() {
   const list = document.getElementById("reportList");
   list.innerHTML = "<p class='helper-text'>Cargando reportes...</p>";
+  if (IS_LOCAL_FILE) {
+    list.innerHTML = "<p class='helper-text'>En modo local puedes usar este panel para revisar accesos y gestionar productos. Los reportes reales aparecerán cuando trabajemos con la API activa.</p>";
+    return;
+  }
   try {
     const reports = await api("/api/admin/reports");
     if (!reports.length) {
@@ -214,6 +247,10 @@ async function cargarReportes() {
 async function cambiarEstadoUsuario(userId, action) {
   const label = action === "ban" ? "baneando" : "rehabilitando";
   setEstado(`Procesando, ${label} usuario...`);
+  if (IS_LOCAL_FILE) {
+    setEstado("La moderación de usuarios quedará activa cuando usemos la API local.");
+    return;
+  }
   try {
     const result = await api(`/api/admin/users/${userId}/${action}`, { method: "POST" });
     setEstado(result.mensaje || "Accion completada.");
@@ -230,7 +267,7 @@ async function cerrarSesion() {
   } finally {
     localStorage.removeItem("token");
     localStorage.removeItem("currentUser");
-    window.location.href = "login.html";
+  window.location.href = "index.html";
   }
 }
 

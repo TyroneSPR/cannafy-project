@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cannafy | Panel dealer</title>
+  <title>Cannafy | Gestión de productos</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
@@ -11,36 +12,22 @@
 <div class="market-shell">
   <header class="market-topbar">
     <div class="brand-lockup">
-      <span class="brand-mark">C</span>
+      <span class="brand-mark"><img src="cannafy-logo.png" alt="Logo de Cannafy"></span>
       <div>
-        <strong>Cannafy Dealer</strong>
+        <strong>Gestión Cannafy</strong>
         <p id="dealerInfo" class="micro-copy"></p>
       </div>
     </div>
 
     <div class="topbar-actions">
-      <button class="secondary-btn warm-btn" onclick="toggleComposer()">Registrar producto</button>
-      <div class="notification-anchor">
-        <button class="secondary-btn notification-btn" onclick="toggleNotifications()">
-          <span>Notificaciones</span>
-          <strong id="notificationCount">0</strong>
-        </button>
-        <div id="notificationPanel" class="notification-panel hidden">
-          <div class="notification-header">
-            <strong>Actividad</strong>
-            <button class="secondary-btn tiny-btn" onclick="marcarTodoLeido()">Marcar leídas</button>
-          </div>
-          <div id="notificationList"></div>
-        </div>
-      </div>
+      <button class="secondary-btn warm-btn" onclick="toggleComposer()">Nuevo producto</button>
       <div class="menu-anchor">
         <button class="icon-btn" onclick="toggleMenu()" aria-label="Abrir menú">...</button>
         <div id="quickMenu" class="quick-menu hidden">
+          <button class="secondary-btn" onclick="window.location.href='admin.html'">Panel admin</button>
+          <button class="secondary-btn" onclick="window.location.href='tienda.html'">Ver tienda</button>
+          <button class="secondary-btn" onclick="window.location.href='social.html'">Cannacrew's</button>
           <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
-          <button class="secondary-btn" onclick="window.location.href='tienda.html'">Explorar tienda</button>
-          <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
-          <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
-          <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportar bug</button>
           <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
           <button onclick="cerrarSesion()">Cerrar sesión</button>
         </div>
@@ -50,24 +37,24 @@
 
   <section class="hero-market dealer-hero">
     <div class="hero-copy">
-      <span class="eyebrow">Panel cálido y flexible</span>
-      <h1>No te soltamos directo al formulario. Primero te ubicamos, luego publicas.</h1>
-      <p>Revisa tu vitrina, entiende el ritmo de tu tienda y después abre el panel de publicación cuando quieras.</p>
+      <span class="eyebrow">Catálogo oficial</span>
+      <h1>Publica y organiza los productos oficiales de Cannafy</h1>
+      <p>Desde aquí pueden agregar, editar, poner ofertas y mantener el catálogo listo por categoría para la tienda principal.</p>
       <div class="hero-actions">
-        <button onclick="toggleComposer()">Publicar ahora</button>
-        <button class="secondary-btn" onclick="scrollToProducts()">Ver mi vitrina</button>
+        <button onclick="toggleComposer()">Agregar producto</button>
+        <button class="secondary-btn" onclick="scrollToProducts()">Ver catálogo cargado</button>
       </div>
     </div>
     <div class="hero-showcase">
       <article class="spotlight-card accent-card">
-        <span class="eyebrow">Catálogo</span>
-        <h3>Gestiona productos con menos ruido</h3>
-        <p>Edita, oferta y elimina sin sentir el panel pesado.</p>
+        <span class="eyebrow">Control</span>
+        <h3>Todo el catálogo en una sola cuenta</h3>
+        <p>Ambos dueños pueden entrar con la misma cuenta y trabajar el catálogo juntos.</p>
       </article>
       <article class="spotlight-card">
-        <span class="eyebrow">Relación</span>
-        <h3>Conversa antes de vender</h3>
-        <p>Mensajes y comunidad integrados para una experiencia más cercana.</p>
+        <span class="eyebrow">Más adelante</span>
+        <h3>Espacio para vendedores externos</h3>
+        <p>Cuando lo activen, también podrán vender productos dentro de Cannafy bajo nuevas tiendas.</p>
       </article>
     </div>
   </section>
@@ -75,32 +62,47 @@
   <section id="composerCard" class="panel-card hidden composer-card">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Nueva publicación</span>
-        <h2>Registrar producto</h2>
+        <span class="eyebrow">Nuevo producto</span>
+        <h2>Agregar producto al catálogo</h2>
       </div>
       <button class="secondary-btn" onclick="toggleComposer()">Cerrar</button>
     </div>
 
     <div class="form-grid">
       <input type="text" id="nombre" placeholder="Nombre del producto">
+      <select id="categoria">
+        <option value="papeles">Papeles</option>
+        <option value="grinders">Grinders</option>
+        <option value="pipas">Pipas</option>
+        <option value="encendedores">Encendedores</option>
+        <option value="accesorios">Accesorios</option>
+      </select>
       <input type="text" id="precio" placeholder="Precio">
-      <input type="text" id="descripcion" placeholder="Descripción corta">
       <input type="url" id="imagen" placeholder="URL de imagen (opcional)">
     </div>
+
+    <div class="form-grid">
+      <input type="text" id="colores" placeholder="Colores (separados por coma)">
+      <input type="text" id="material" placeholder="Material (opcional)">
+      <input type="text" id="tamano" placeholder="Tamaño o medida (opcional)">
+      <input type="text" id="contenido" placeholder="Contenido o cantidad (opcional)">
+    </div>
+
+    <textarea id="descripcion" class="social-textarea" placeholder="Descripción del producto"></textarea>
 
     <div class="offer-row">
       <label class="checkbox-row compact-check">
         <input type="checkbox" id="ofertaActiva">
         <span>Activar oferta</span>
       </label>
-      <input type="text" id="precioOferta" placeholder="Precio en oferta (opcional)">
+      <input type="text" id="precioOferta" placeholder="Precio en oferta">
     </div>
 
     <div class="upload-row">
       <input type="file" id="imagenArchivo" accept="image/*">
       <div class="image-preview-shell">
         <img id="previewImagen" class="image-preview" alt="Vista previa del producto">
-        <p id="previewHint" class="helper-text">La miniatura se recortará automáticamente en formato cuadrado.</p>
+        <p id="previewHint" class="helper-text">Así se verá la imagen dentro de la tienda.</p>
       </div>
     </div>
 
@@ -111,10 +113,18 @@
   <section id="dealerProducts" class="market-section">
     <div class="section-head">
       <div>
-        <span class="eyebrow">Mi vitrina</span>
+        <span class="eyebrow">Gestión</span>
         <h2>Productos publicados</h2>
       </div>
       <button class="secondary-btn" onclick="cargarProductos()">Actualizar</button>
+    </div>
+    <div class="category-pills">
+      <button class="secondary-btn" onclick="filtrarCategoria('todas')">Todas</button>
+      <button class="secondary-btn" onclick="filtrarCategoria('papeles')">Papeles</button>
+      <button class="secondary-btn" onclick="filtrarCategoria('grinders')">Grinders</button>
+      <button class="secondary-btn" onclick="filtrarCategoria('pipas')">Pipas</button>
+      <button class="secondary-btn" onclick="filtrarCategoria('encendedores')">Encendedores</button>
+      <button class="secondary-btn" onclick="filtrarCategoria('accesorios')">Accesorios</button>
     </div>
     <div id="productos" class="productos-grid dense-grid"></div>
   </section>
@@ -124,15 +134,22 @@
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
+const CATEGORY_LABELS = {
+  papeles: "Papeles",
+  grinders: "Grinders",
+  pipas: "Pipas",
+  encendedores: "Encendedores",
+  accesorios: "Accesorios"
+};
 let imagenArchivoBase64 = "";
-let lastUnreadCount = 0;
-let audioContext = null;
+let categoriaActiva = "todas";
 
-if (!token || !currentUser || currentUser.role !== "dealer") {
-  window.location.href = "login.html";
+if (!token || !currentUser || currentUser.role !== "admin") {
+  window.location.href = "index.html";
 }
 
-document.getElementById("dealerInfo").textContent = `${currentUser.apodo || currentUser.nombre} · ${currentUser.correo}`;
+document.getElementById("dealerInfo").textContent = `${currentUser.apodo || currentUser.nombre} · catálogo oficial`;
 document.getElementById("btnGuardar").addEventListener("click", crearProducto);
 document.getElementById("imagenArchivo").addEventListener("change", cargarArchivoImagen);
 document.getElementById("imagen").addEventListener("input", actualizarPreviewDesdeUrl);
@@ -141,74 +158,16 @@ function toggleMenu() {
   document.getElementById("quickMenu").classList.toggle("hidden");
 }
 
-function getInitial(name) {
-  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+function toggleComposer() {
+  document.getElementById("composerCard").classList.toggle("hidden");
 }
 
-function avatarMarkup(name, photo) {
-  if (photo) {
-    return `<img class="profile-avatar" src="${photo}" alt="${name}">`;
-  }
-  return `<div class="profile-avatar avatar-fallback">${getInitial(name)}</div>`;
+function scrollToProducts() {
+  document.getElementById("dealerProducts").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function toggleNotifications() {
-  document.getElementById("notificationPanel").classList.toggle("hidden");
-}
-
-function playNotificationTone() {
-  try {
-    const AudioCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtor) {
-      return;
-    }
-    if (!audioContext) {
-      audioContext = new AudioCtor();
-    }
-    if (audioContext.state === "suspended") {
-      audioContext.resume().catch(() => {});
-    }
-
-    const now = audioContext.currentTime;
-    const gain = audioContext.createGain();
-    gain.connect(audioContext.destination);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(820, now);
-    oscillator.frequency.exponentialRampToValueAtTime(1120, now + 0.16);
-    oscillator.connect(gain);
-    oscillator.start(now);
-    oscillator.stop(now + 0.44);
-  } catch (error) {
-  }
-}
-
-function formatTime(value) {
-  try {
-    return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch (error) {
-    return "";
-  }
-}
-
-async function api(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      ...(options.headers || {})
-    }
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || "Error inesperado");
-  }
-  return data;
+function categoryLabel(value) {
+  return CATEGORY_LABELS[value] || "Accesorios";
 }
 
 function escapeHtml(value) {
@@ -220,74 +179,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-async function cargarNotificaciones() {
-  try {
-    const result = await api("/api/notifications");
-    const list = document.getElementById("notificationList");
-    const badge = document.getElementById("notificationCount");
-    const count = result.unread_count || 0;
-    badge.textContent = String(count);
-    badge.classList.toggle("has-unread", count > 0);
-
-    if (!result.items.length) {
-      list.innerHTML = "<p class='helper-text'>No tienes notificaciones nuevas.</p>";
-    } else {
-      list.innerHTML = result.items.map((item) => `
-        <button class="notification-item ${item.read ? "" : "unread"}" onclick="abrirChatDesdeNotificacion(${item.conversation_id || 0})">
-          <span class="identity-row">
-            ${avatarMarkup(item.actor_nombre, item.actor_foto)}
-            <span>
-              <strong>${escapeHtml(item.actor_nombre)}</strong>
-              <small>${escapeHtml(item.message_preview || "Nueva actividad")}</small>
-              <small class="notification-time">${formatTime(item.created_at)}</small>
-            </span>
-          </span>
-        </button>
-      `).join("");
-    }
-
-    if (count > lastUnreadCount && "Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
-      const latest = result.items.find((item) => !item.read) || result.items[0];
-      new Notification(`Nuevo mensaje de ${latest.actor_nombre}`, {
-        body: latest.message_preview || "Tienes un nuevo mensaje."
-      });
-    }
-    if (count > lastUnreadCount) {
-      playNotificationTone();
-    }
-    lastUnreadCount = count;
-  } catch (error) {
-  }
-}
-
-async function marcarTodoLeido() {
-  try {
-    await api("/api/notifications/read", {
-      method: "POST",
-      body: JSON.stringify({})
-    });
-    await cargarNotificaciones();
-  } catch (error) {
-  }
-}
-
-function abrirChatDesdeNotificacion(conversationId) {
-  if (!conversationId) {
-    return;
-  }
-  localStorage.setItem("chatConversationId", String(conversationId));
-  window.location.href = "chat.html";
-}
-
-function toggleComposer() {
-  document.getElementById("composerCard").classList.toggle("hidden");
-}
-
-function scrollToProducts() {
-  document.getElementById("dealerProducts").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function cargarArchivoImagen(event) {
+function cargarArchivoImagen(event) {
   const archivo = event.target.files[0];
   if (!archivo) {
     imagenArchivoBase64 = "";
@@ -304,26 +196,37 @@ async function cargarArchivoImagen(event) {
 }
 
 function actualizarPreviewDesdeUrl() {
-  if (imagenArchivoBase64) {
-    return;
+  if (!imagenArchivoBase64) {
+    actualizarPreview(document.getElementById("imagen").value.trim());
   }
-  actualizarPreview(document.getElementById("imagen").value.trim());
 }
 
 function actualizarPreview(src) {
   const preview = document.getElementById("previewImagen");
-  const hint = document.getElementById("previewHint");
-
   if (!src) {
     preview.removeAttribute("src");
     preview.style.display = "none";
-    hint.textContent = "La miniatura se recortará automáticamente en formato cuadrado.";
     return;
   }
-
   preview.src = src;
   preview.style.display = "block";
-  hint.textContent = "Vista previa lista para la vitrina.";
+}
+
+function limpiarFormulario() {
+  document.getElementById("nombre").value = "";
+  document.getElementById("categoria").value = "papeles";
+  document.getElementById("precio").value = "";
+  document.getElementById("imagen").value = "";
+  document.getElementById("colores").value = "";
+  document.getElementById("material").value = "";
+  document.getElementById("tamano").value = "";
+  document.getElementById("contenido").value = "";
+  document.getElementById("descripcion").value = "";
+  document.getElementById("ofertaActiva").checked = false;
+  document.getElementById("precioOferta").value = "";
+  document.getElementById("imagenArchivo").value = "";
+  imagenArchivoBase64 = "";
+  actualizarPreview("");
 }
 
 async function crearProducto() {
@@ -332,13 +235,56 @@ async function crearProducto() {
 
   const payload = {
     nombre: document.getElementById("nombre").value.trim(),
+    categoria: document.getElementById("categoria").value,
     precio: document.getElementById("precio").value.trim(),
     imagen: document.getElementById("imagen").value.trim(),
     imagen_archivo: imagenArchivoBase64,
+    colores: document.getElementById("colores").value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    especificaciones: {
+      material: document.getElementById("material").value.trim(),
+      tamano: document.getElementById("tamano").value.trim(),
+      contenido: document.getElementById("contenido").value.trim()
+    },
     descripcion: document.getElementById("descripcion").value.trim(),
     oferta_activa: document.getElementById("ofertaActiva").checked,
     precio_oferta: document.getElementById("precioOferta").value.trim()
   };
+
+  if (!payload.nombre || !payload.precio || !(payload.imagen || payload.imagen_archivo) || !payload.descripcion) {
+    estado.textContent = "Completa nombre, categoría, precio, descripción e imagen para publicar.";
+    return;
+  }
+
+  if (IS_LOCAL_FILE) {
+    const items = JSON.parse(localStorage.getItem("localProducts") || "[]");
+    items.unshift({
+      id: Date.now(),
+      dealer_id: currentUser.id,
+      dealer_nombre: "Cannafy",
+      dealer_foto: currentUser.foto_perfil || "cannafy-logo.png",
+      dealer_verified: true,
+      nombre: payload.nombre,
+      categoria: payload.categoria,
+      precio: payload.precio,
+      oferta_activa: payload.oferta_activa,
+      precio_oferta: payload.precio_oferta,
+      precio_mostrar: payload.oferta_activa && payload.precio_oferta ? payload.precio_oferta : payload.precio,
+      imagen: payload.imagen_archivo || payload.imagen,
+      colores: payload.colores,
+      especificaciones: payload.especificaciones,
+      descripcion: payload.descripcion,
+      dealer_rating: { average: 0, count: 0 }
+    });
+    localStorage.setItem("localProducts", JSON.stringify(items));
+    limpiarFormulario();
+    estado.textContent = "Producto publicado localmente.";
+    cargarProductos();
+    toggleComposer();
+    return;
+  }
 
   try {
     const response = await fetch(`${API_URL}/api/products`, {
@@ -349,23 +295,13 @@ async function crearProducto() {
       },
       body: JSON.stringify(payload)
     });
-
     const result = await response.json();
     if (!response.ok) {
       estado.textContent = result.error || "No se pudo publicar.";
       return;
     }
-
+    limpiarFormulario();
     estado.textContent = "Producto publicado correctamente.";
-    document.getElementById("nombre").value = "";
-    document.getElementById("precio").value = "";
-    document.getElementById("imagen").value = "";
-    document.getElementById("descripcion").value = "";
-    document.getElementById("ofertaActiva").checked = false;
-    document.getElementById("precioOferta").value = "";
-    document.getElementById("imagenArchivo").value = "";
-    imagenArchivoBase64 = "";
-    actualizarPreview("");
     cargarProductos();
     toggleComposer();
   } catch (error) {
@@ -373,59 +309,112 @@ async function crearProducto() {
   }
 }
 
+function filtrarCategoria(categoria) {
+  categoriaActiva = categoria;
+  cargarProductos();
+}
+
 async function cargarProductos() {
   const contenedor = document.getElementById("productos");
   contenedor.innerHTML = "<p class='helper-text'>Cargando productos...</p>";
 
+  if (IS_LOCAL_FILE) {
+    const productos = JSON.parse(localStorage.getItem("localProducts") || "[]");
+    renderProductos(productos.filter((item) => item.dealer_id === currentUser.id));
+    return;
+  }
+
   try {
     const response = await fetch(`${API_URL}/api/products`);
     const productos = await response.json();
-    const propios = productos.filter((item) => item.dealer_id === currentUser.id);
-
-    if (!propios.length) {
-      contenedor.innerHTML = "<p class='helper-text'>Todavía no has publicado productos. Usa el botón de registrar producto cuando estés listo.</p>";
-      return;
-    }
-
-    contenedor.innerHTML = propios.map((producto) => `
-      <article class="product-card compact-card dealer-card">
-        <img src="${producto.imagen}" alt="${producto.nombre}">
-        <div class="product-copy">
-          <input id="nombre-${producto.id}" type="text" value="${escapeHtml(producto.nombre)}" placeholder="Nombre">
-          <input id="precio-${producto.id}" type="text" value="${escapeHtml(producto.precio)}" placeholder="Precio">
-          <input id="descripcion-${producto.id}" type="text" value="${escapeHtml(producto.descripcion || "")}" placeholder="Descripción">
-          <label class="checkbox-row compact-check">
-            <input id="oferta-${producto.id}" type="checkbox" ${producto.oferta_activa ? "checked" : ""}>
-            <span>Oferta activa</span>
-          </label>
-          <input id="precio-oferta-${producto.id}" type="text" value="${escapeHtml(producto.precio_oferta || "")}" placeholder="Precio en oferta">
-          <div class="price-stack">
-            <strong>${producto.precio_mostrar}</strong>
-            ${producto.oferta_activa && producto.precio_oferta ? `<span class="offer-badge">Oferta</span>` : ""}
-          </div>
-        </div>
-        <div class="card-actions">
-          <button onclick="guardarCambios(${producto.id})">Guardar</button>
-          <button class="secondary-btn" onclick="eliminarProducto(${producto.id})">Eliminar</button>
-        </div>
-      </article>
-    `).join("");
+    renderProductos(productos.filter((item) => item.dealer_id === currentUser.id));
   } catch (error) {
     contenedor.innerHTML = "<p class='helper-text'>No se pudieron cargar los productos.</p>";
   }
 }
 
+function renderProductos(productos) {
+  const contenedor = document.getElementById("productos");
+  const filtrados = categoriaActiva === "todas"
+    ? productos
+    : productos.filter((item) => item.categoria === categoriaActiva);
+
+  if (!filtrados.length) {
+    contenedor.innerHTML = "<p class='helper-text'>No hay productos cargados en esta categoría.</p>";
+    return;
+  }
+
+  contenedor.innerHTML = filtrados.map((producto) => `
+    <article class="product-card compact-card dealer-card">
+      <img src="${producto.imagen}" alt="${escapeHtml(producto.nombre)}">
+      <div class="product-copy">
+        <input id="nombre-${producto.id}" type="text" value="${escapeHtml(producto.nombre)}" placeholder="Nombre">
+        <select id="categoria-${producto.id}">
+          <option value="papeles" ${producto.categoria === "papeles" ? "selected" : ""}>Papeles</option>
+          <option value="grinders" ${producto.categoria === "grinders" ? "selected" : ""}>Grinders</option>
+          <option value="pipas" ${producto.categoria === "pipas" ? "selected" : ""}>Pipas</option>
+          <option value="encendedores" ${producto.categoria === "encendedores" ? "selected" : ""}>Encendedores</option>
+          <option value="accesorios" ${producto.categoria === "accesorios" ? "selected" : ""}>Accesorios</option>
+        </select>
+        <input id="precio-${producto.id}" type="text" value="${escapeHtml(producto.precio)}" placeholder="Precio">
+        <input id="colores-${producto.id}" type="text" value="${escapeHtml((producto.colores || []).join(", "))}" placeholder="Colores">
+        <input id="material-${producto.id}" type="text" value="${escapeHtml(producto.especificaciones?.material || "")}" placeholder="Material">
+        <input id="tamano-${producto.id}" type="text" value="${escapeHtml(producto.especificaciones?.tamano || "")}" placeholder="Tamaño">
+        <input id="contenido-${producto.id}" type="text" value="${escapeHtml(producto.especificaciones?.contenido || "")}" placeholder="Contenido">
+        <textarea id="descripcion-${producto.id}" class="social-textarea" placeholder="Descripción">${escapeHtml(producto.descripcion || "")}</textarea>
+        <label class="checkbox-row compact-check">
+          <input id="oferta-${producto.id}" type="checkbox" ${producto.oferta_activa ? "checked" : ""}>
+          <span>Oferta activa</span>
+        </label>
+        <input id="precio-oferta-${producto.id}" type="text" value="${escapeHtml(producto.precio_oferta || "")}" placeholder="Precio en oferta">
+        <div class="price-stack">
+          <strong>${escapeHtml(producto.precio_mostrar || producto.precio)}</strong>
+          <span class="product-meta">${categoryLabel(producto.categoria)}</span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button onclick="guardarCambios(${producto.id})">Guardar</button>
+        <button class="secondary-btn" onclick="eliminarProducto(${producto.id})">Eliminar</button>
+      </div>
+    </article>
+  `).join("");
+}
+
 async function guardarCambios(id) {
   const estado = document.getElementById("estado");
   estado.textContent = "";
-
   const payload = {
     nombre: document.getElementById(`nombre-${id}`).value.trim(),
+    categoria: document.getElementById(`categoria-${id}`).value,
     precio: document.getElementById(`precio-${id}`).value.trim(),
+    colores: document.getElementById(`colores-${id}`).value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    especificaciones: {
+      material: document.getElementById(`material-${id}`).value.trim(),
+      tamano: document.getElementById(`tamano-${id}`).value.trim(),
+      contenido: document.getElementById(`contenido-${id}`).value.trim()
+    },
     descripcion: document.getElementById(`descripcion-${id}`).value.trim(),
     oferta_activa: document.getElementById(`oferta-${id}`).checked,
     precio_oferta: document.getElementById(`precio-oferta-${id}`).value.trim()
   };
+
+  if (IS_LOCAL_FILE) {
+    const items = JSON.parse(localStorage.getItem("localProducts") || "[]");
+    const item = items.find((product) => product.id === id);
+    if (!item) {
+      return;
+    }
+    Object.assign(item, payload, {
+      precio_mostrar: payload.oferta_activa && payload.precio_oferta ? payload.precio_oferta : payload.precio
+    });
+    localStorage.setItem("localProducts", JSON.stringify(items));
+    estado.textContent = "Producto actualizado localmente.";
+    cargarProductos();
+    return;
+  }
 
   try {
     const response = await fetch(`${API_URL}/api/products/${id}`, {
@@ -436,13 +425,11 @@ async function guardarCambios(id) {
       },
       body: JSON.stringify(payload)
     });
-
     const result = await response.json();
     if (!response.ok) {
       estado.textContent = result.error || "No se pudo actualizar.";
       return;
     }
-
     estado.textContent = "Producto actualizado.";
     cargarProductos();
   } catch (error) {
@@ -451,61 +438,39 @@ async function guardarCambios(id) {
 }
 
 async function eliminarProducto(id) {
+  const estado = document.getElementById("estado");
+  if (IS_LOCAL_FILE) {
+    const items = JSON.parse(localStorage.getItem("localProducts") || "[]").filter((product) => product.id !== id);
+    localStorage.setItem("localProducts", JSON.stringify(items));
+    estado.textContent = "Producto eliminado.";
+    cargarProductos();
+    return;
+  }
+
   try {
     const response = await fetch(`${API_URL}/api/products/${id}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });
-
     const result = await response.json();
     if (!response.ok) {
-      document.getElementById("estado").textContent = result.error || "No se pudo eliminar.";
+      estado.textContent = result.error || "No se pudo eliminar.";
       return;
     }
-
-    document.getElementById("estado").textContent = "Producto eliminado.";
+    estado.textContent = "Producto eliminado.";
     cargarProductos();
   } catch (error) {
-    document.getElementById("estado").textContent = "No se pudo conectar con la API.";
+    estado.textContent = "No se pudo conectar con la API.";
   }
 }
 
-async function cerrarSesion() {
-  try {
-    await fetch(`${API_URL}/api/auth/logout`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-  } catch (error) {
-  }
-
+function cerrarSesion() {
   localStorage.removeItem("token");
   localStorage.removeItem("currentUser");
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 }
 
 cargarProductos();
-cargarNotificaciones();
-
-if ("Notification" in window && Notification.permission === "default") {
-  Notification.requestPermission().catch(() => {});
-}
-
-setInterval(() => {
-  cargarNotificaciones();
-}, 4000);
-
-document.addEventListener("click", (event) => {
-  const menu = document.getElementById("quickMenu");
-  const anchor = document.querySelector(".menu-anchor");
-  if (!anchor.contains(event.target)) {
-    menu.classList.add("hidden");
-  }
-  const notificationAnchor = document.querySelector(".notification-anchor");
-  if (notificationAnchor && !notificationAnchor.contains(event.target)) {
-    document.getElementById("notificationPanel").classList.add("hidden");
-  }
-});
 </script>
 
 </body>

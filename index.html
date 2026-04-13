@@ -3,70 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cannafy | Términos</title>
+  <title>Cannafy | Ingresar</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="terms-page">
 
 <div class="container">
-  <h2>Términos y condiciones</h2>
-  <p class="helper-text">Lee el contenido completo para desbloquear el acceso al flujo de registro.</p>
+  <h2>Bienvenido a Cannafy</h2>
+  <p class="helper-text">Ingresa con tu correo o tu número de teléfono para entrar a la tienda y a Cannacrew's.</p>
 
-  <div class="terms-box" id="terms">
-    Al acceder, registrarte o utilizar esta plataforma, declaras que has leído y aceptado los términos de uso.
-    Cannafy funciona como una vitrina digital entre consumidores y dealers registrados. Cada usuario es responsable
-    por la información que comparte, por sus publicaciones y por las interacciones que realice dentro de la plataforma.
-    <br><br>
-    Cannafy no garantiza transacciones exitosas ni reemplaza la verificación individual de las partes. El uso de la
-    plataforma es voluntario y cada persona asume los riesgos asociados a publicar, comprar o vender. La empresa puede
-    moderar o retirar contenido que incumpla las reglas internas o afecte la seguridad del servicio.
-    <br><br>
-    Cannafy no afirma conocer, revisar previamente ni validar como ciertos todos los hechos, acuerdos o conductas que
-    ocurran dentro del sitio entre usuarios. Sin embargo, sí se reserva la facultad de moderar, limitar, suspender o
-    eliminar cuentas, publicaciones y mensajes reportados o detectados como contrarios a las normas internas.
-    <br><br>
-    No aceptamos el incumplimiento de normas, el abuso de la comunidad, la suplantación, el fraude ni cualquier uso
-    malicioso de la plataforma. El usuario entiende que la permanencia en Cannafy está condicionada al respeto de estas reglas.
-    <br><br>
-    Los datos solicitados durante el registro se usarán únicamente para operar la plataforma y mejorar la experiencia.
-    El nombre Cannafy, su identidad y los contenidos propios del sitio están protegidos y todos sus derechos quedan reservados.
-    Al continuar, confirmas que entiendes estas condiciones y aceptas avanzar bajo tu propia responsabilidad.
-  </div>
-
-  <div class="contador" id="contador">Debes leer hasta el final para poder continuar.</div>
-
-  <label class="checkbox-row">
-    <input type="checkbox" id="aceptar" disabled>
-    <span>He leído y acepto los términos y condiciones.</span>
-  </label>
-
-  <button id="btnContinuar" class="is-disabled" disabled>Continuar</button>
-  <a class="text-link" href="acerca.html">Acerca de nosotros y derechos de Cannafy</a>
+  <input type="text" id="identifier" placeholder="Correo electrónico o número de teléfono">
+  <input type="password" id="password" placeholder="Contraseña">
+  <button id="btnLogin">Ingresar</button>
+  <p id="estado" class="helper-text"></p>
+  <a class="text-link" href="forgot-password.html">¿Te olvidaste la contraseña?</a>
+  <a class="text-link" href="register.html">¿No tienes cuenta? Crea una</a>
+  <a class="text-link" href="acerca.html">Acerca de Cannafy</a>
 </div>
 
 <script>
-const terms = document.getElementById("terms");
-const checkbox = document.getElementById("aceptar");
-const boton = document.getElementById("btnContinuar");
-const contador = document.getElementById("contador");
+const API_URL = window.location.origin;
+const identifierInput = document.getElementById("identifier");
+const passwordInput = document.getElementById("password");
+const estado = document.getElementById("estado");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
 
-terms.addEventListener("scroll", () => {
-  const reachedEnd = terms.scrollTop + terms.clientHeight >= terms.scrollHeight - 4;
-  if (reachedEnd) {
-    checkbox.disabled = false;
-    contador.textContent = "Ya puedes aceptar los términos.";
+document.getElementById("btnLogin").addEventListener("click", login);
+identifierInput.addEventListener("keydown", handleEnterLogin);
+passwordInput.addEventListener("keydown", handleEnterLogin);
+
+function handleEnterLogin(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    login();
   }
-});
+}
 
-checkbox.addEventListener("change", () => {
-  boton.disabled = !checkbox.checked;
-  boton.classList.toggle("is-disabled", !checkbox.checked);
-});
+function seedLocalUsers() {
+  const users = JSON.parse(localStorage.getItem("localAuthUsers") || "[]");
+  const adminUser = users.find((user) => user.identifier.toLowerCase() === "cannafy.pe@gmail.com");
+  if (adminUser) {
+    adminUser.nombre = "ADM CANNAFY";
+    adminUser.apodo = "ADM CANNAFY";
+    adminUser.bio = "Cuenta administrativa compartida de Cannafy.";
+    adminUser.foto_perfil = adminUser.foto_perfil || "cannafy-logo.png";
+    adminUser.verified = true;
+    localStorage.setItem("localAuthUsers", JSON.stringify(users));
+  } else {
+    users.unshift({
+      id: 1,
+      identifier: "cannafy.pe@gmail.com",
+      telefono: "",
+      password: "123456",
+      role: "admin",
+      nombre: "ADM CANNAFY",
+      apodo: "ADM CANNAFY",
+      bio: "Cuenta administrativa compartida de Cannafy.",
+      foto_perfil: "cannafy-logo.png",
+      verified: true
+    });
+    localStorage.setItem("localAuthUsers", JSON.stringify(users));
+  }
+  return users;
+}
 
-boton.addEventListener("click", () => {
-  localStorage.setItem("terminos", "aceptado");
-  window.location.href = "rol.html";
-});
+async function login() {
+  const identifier = identifierInput.value.trim();
+  const password = passwordInput.value;
+  estado.textContent = "";
+
+  if (!identifier || password.length < 6) {
+    estado.textContent = "Completa tu acceso y una contraseña válida.";
+    return;
+  }
+
+  if (IS_LOCAL_FILE) {
+    return loginLocal(identifier, password);
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password })
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      estado.textContent = result.error || "No se pudo iniciar sesión.";
+      return;
+    }
+
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("currentUser", JSON.stringify(result.user));
+    localStorage.setItem("lastLoginIdentifier", identifier);
+    redirigirSegunRol(result.user);
+  } catch (error) {
+    loginLocal(identifier, password);
+  }
+}
+
+function loginLocal(identifier, password) {
+  const users = seedLocalUsers();
+  const clean = identifier.trim().toLowerCase();
+  const user = users.find((item) =>
+    item.identifier.toLowerCase() === clean || (item.telefono && item.telefono === identifier.trim())
+  );
+
+  if (!user || user.password !== password) {
+    estado.textContent = "Credenciales incorrectas.";
+    return;
+  }
+
+  const sessionUser = {
+    id: user.id,
+    role: user.role,
+    nombre: user.nombre,
+    apodo: user.apodo,
+    bio: user.bio || "",
+    foto_perfil: user.foto_perfil || "",
+    correo: user.identifier.includes("@") ? user.identifier : "",
+    telefono: user.telefono || (user.identifier.includes("@") ? "" : user.identifier),
+    verified: user.role === "admin"
+  };
+
+  localStorage.setItem("token", `local-${Date.now()}`);
+  localStorage.setItem("currentUser", JSON.stringify(sessionUser));
+  localStorage.setItem("lastLoginIdentifier", identifier);
+  redirigirSegunRol(sessionUser);
+}
+
+function redirigirSegunRol(user) {
+  if (user.role === "admin") {
+    window.location.href = "admin.html";
+    return;
+  }
+  window.location.href = "tienda.html";
+}
+
+seedLocalUsers();
 </script>
 
 </body>

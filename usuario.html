@@ -3,48 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cannafy | Perfil público</title>
+  <title>Cannafy | Perfil</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
 
-<div class="store-shell">
+<div class="store-shell profile-page-shell">
   <header class="store-header">
     <div>
-      <h1>Perfil público</h1>
-      <p class="helper-text">Conoce mejor a la persona detrás del perfil, su actividad y, si es dealer, su reputación.</p>
+      <h1>Perfil</h1>
+      <p class="helper-text">Conoce mejor a la persona o tienda detrás de esta cuenta.</p>
     </div>
     <div class="store-actions">
       <button class="secondary-btn" onclick="history.back()">Volver</button>
-      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Cannacrew's</button>
     </div>
   </header>
 
-  <section class="panel-card profile-shell">
-    <div class="profile-preview">
-      <div id="userAvatar" class="profile-avatar large avatar-fallback"></div>
-      <div>
-        <h2 id="userName">Perfil</h2>
+  <section class="panel-card profile-hero-card">
+    <div class="profile-hero">
+      <div id="userAvatar" class="profile-avatar profile-hero-avatar avatar-fallback"></div>
+      <div class="profile-hero-main">
+        <div class="profile-hero-head">
+          <div>
+            <h2 id="userHandle">usuario</h2>
+            <p id="userName" class="helper-text"></p>
+          </div>
+        </div>
+        <div class="profile-stats-row">
+          <span><strong id="userPosts">0</strong> publicaciones</span>
+          <span><strong id="userFollowers">0</strong> seguidores</span>
+          <span><strong id="userFollowing">0</strong> seguidos</span>
+        </div>
         <p id="userRole" class="product-meta"></p>
-        <p id="userBio" class="helper-text"></p>
-        <p id="userMeta" class="helper-text"></p>
+        <p id="userBio" class="profile-hero-bio"></p>
+        <div class="profile-action-row">
+          <button id="messageBtn" class="hidden" type="button" onclick="abrirChat()">Enviar mensaje</button>
+          <button id="viewStoreBtn" class="secondary-btn hidden" type="button" onclick="scrollToProducts()">Ver productos</button>
+        </div>
       </div>
     </div>
-    <div id="dealerRatingBox" class="rating-shell hidden">
-      <div class="rating-summary">
-        <strong id="dealerRatingSummary">Sin calificaciones todavía</strong>
-        <p id="dealerRatingMeta" class="helper-text"></p>
-      </div>
-      <div id="ratingActions" class="rating-actions hidden"></div>
+  </section>
+
+  <section id="dealerRatingBox" class="panel-card rating-shell hidden">
+    <div class="rating-summary">
+      <strong id="dealerRatingSummary">Sin valoraciones todavía</strong>
+      <p id="dealerRatingMeta" class="helper-text"></p>
     </div>
+    <div id="ratingActions" class="rating-actions hidden"></div>
   </section>
 
   <section id="dealerProductsSection" class="panel-card hidden">
     <div class="section-heading">
       <div>
-        <h2>Productos del dealer</h2>
-        <p class="helper-text">Vitrina pública del perfil que estás viendo.</p>
+        <h2>Publicaciones y vitrina</h2>
+        <p class="helper-text">Productos públicos visibles desde este perfil.</p>
       </div>
     </div>
     <div id="dealerProducts" class="productos-grid dense-grid"></div>
@@ -55,13 +70,50 @@
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
 const userId = Number(new URLSearchParams(window.location.search).get("id"));
+let viewedUserVerified = false;
 
 if (!token || !currentUser || !userId) {
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 }
 
 async function api(path, options = {}) {
+  if (IS_LOCAL_FILE) {
+    const products = JSON.parse(localStorage.getItem("localProducts") || "[]");
+    const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]");
+    const users = JSON.parse(localStorage.getItem("localAuthUsers") || "[]");
+    const user = users.find((item) => item.id === userId);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+    if (path === `/api/users/${userId}`) {
+      return {
+        user: {
+          id: user.id,
+          role: user.role,
+          nombre: user.nombre,
+          apodo: user.apodo,
+          bio: user.bio || "",
+          foto_perfil: user.foto_perfil || "",
+          correo: user.identifier.includes("@") ? user.identifier : "",
+          telefono: user.telefono || "",
+          verified: user.role === "admin"
+        },
+        products: products.filter((item) => item.dealer_id === userId),
+        stats: {
+          posts: posts.filter((item) => item.author_id === userId).length,
+          followers: 0,
+          following: 0,
+          products: products.filter((item) => item.dealer_id === userId).length
+        },
+        rating: { average: 0, count: 0 },
+        my_rating: null
+      };
+    }
+    throw new Error("Ruta no disponible en modo local");
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
@@ -86,9 +138,9 @@ function verifiedMark(user) {
 }
 
 function roleLabel(role) {
-  if (role === "admin") return "Administrador";
-  if (role === "dealer") return "Dealer";
-  return "Consumidor";
+  if (role === "admin") return "Perfil verificado";
+  if (role === "dealer") return "Tienda";
+  return "Usuario";
 }
 
 function escapeHtml(value) {
@@ -111,6 +163,31 @@ function renderAvatar(user) {
     avatar.textContent = getInitial(user.apodo || user.nombre);
     avatar.classList.add("avatar-fallback");
   }
+}
+
+function scrollToProducts() {
+  document.getElementById("dealerProductsSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function abrirChat() {
+  if (currentUser.id === userId) {
+    return;
+  }
+
+  if (IS_LOCAL_FILE) {
+    window.location.href = "chat.html";
+    return;
+  }
+
+  try {
+    await api("/api/conversations", {
+      method: "POST",
+      body: JSON.stringify({ recipient_id: userId })
+    });
+  } catch (error) {
+  }
+
+  window.location.href = "chat.html";
 }
 
 async function calificar(score) {
@@ -139,7 +216,7 @@ function renderRatingBox(user, rating, myRating) {
     : "Sin calificaciones todavía";
   document.getElementById("dealerRatingMeta").textContent = rating.count
     ? `${rating.count} valoraciones de la comunidad`
-    : "Sé la primera persona en valorar a este dealer.";
+    : "Sé la primera persona en valorar esta tienda.";
 
   if (currentUser.id === user.id || currentUser.role === "admin") {
     actions.classList.add("hidden");
@@ -149,24 +226,27 @@ function renderRatingBox(user, rating, myRating) {
 
   actions.classList.remove("hidden");
   actions.innerHTML = [1, 2, 3, 4, 5].map((score) => `
-    <button class="secondary-btn rating-btn ${myRating === score ? "active" : ""}" onclick="calificar(${score})">
-      ${score}★
-    </button>
+    <button class="secondary-btn rating-btn ${myRating === score ? "active" : ""}" onclick="calificar(${score})">${score}★</button>
   `).join("");
 }
 
 function renderProducts(products) {
   const section = document.getElementById("dealerProductsSection");
   const grid = document.getElementById("dealerProducts");
-  if (!products.length) {
+  const shouldShow = viewedUserVerified && products.length;
+  document.getElementById("viewStoreBtn").classList.toggle("hidden", !shouldShow);
+
+  if (!shouldShow) {
     section.classList.add("hidden");
     return;
   }
+
   section.classList.remove("hidden");
   grid.innerHTML = products.map((product) => `
     <article class="product-card compact-card">
       <img src="${product.imagen}" alt="${escapeHtml(product.nombre)}">
       <div class="product-copy">
+        <span class="product-meta">${escapeHtml(product.categoria || "producto")}</span>
         <h3>${escapeHtml(product.nombre)}</h3>
         <p>${escapeHtml(product.descripcion || "Sin descripción")}</p>
         <div class="price-stack">
@@ -180,14 +260,17 @@ function renderProducts(products) {
 async function cargarPerfil() {
   try {
     const result = await api(`/api/users/${userId}`);
-    const { user, products, rating, my_rating } = result;
+    const { user, products, rating, my_rating, stats } = result;
+    viewedUserVerified = Boolean(user.verified);
     renderAvatar(user);
-    document.getElementById("userName").innerHTML = `${escapeHtml(user.apodo || user.nombre)}${verifiedMark(user)}`;
+    document.getElementById("userHandle").innerHTML = `${escapeHtml(user.apodo || user.nombre)}${verifiedMark(user)}`;
+    document.getElementById("userName").textContent = user.nombre || "";
     document.getElementById("userRole").textContent = roleLabel(user.role);
     document.getElementById("userBio").textContent = user.bio || "Este usuario todavía no agregó una bio.";
-    document.getElementById("userMeta").textContent = user.role === "dealer"
-      ? `${products.length} productos publicados`
-      : "Perfil comunitario";
+    document.getElementById("userPosts").textContent = stats?.posts || 0;
+    document.getElementById("userFollowers").textContent = stats?.followers || 0;
+    document.getElementById("userFollowing").textContent = stats?.following || 0;
+    document.getElementById("messageBtn").classList.toggle("hidden", currentUser.id === user.id);
     renderRatingBox(user, rating, my_rating);
     renderProducts(products);
   } catch (error) {

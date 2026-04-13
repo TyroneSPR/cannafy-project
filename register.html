@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannafy | Crear cuenta</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>Crea tu cuenta</h2>
+  <p>Regístrate con correo o teléfono para entrar a la tienda y formar parte de Cannafy y la Cannacrew.</p>
+
+  <input type="text" id="nombre" placeholder="Tu nombre o apodo">
+  <input type="text" id="identifier" placeholder="Correo electrónico o número de teléfono">
+  <input type="password" id="password" placeholder="Contraseña (mínimo 6 caracteres)">
+  <button id="btnRegister">Crear cuenta</button>
+  <p id="estado" class="helper-text"></p>
+  <a class="text-link" href="index.html">¿Ya tienes cuenta? Inicia sesión</a>
+  <a class="text-link" href="acerca.html">Acerca de Cannafy</a>
+</div>
+
+<script>
+const API_URL = window.location.origin;
+const IS_LOCAL_FILE = window.location.protocol === "file:";
+
+document.getElementById("btnRegister").addEventListener("click", registrar);
+
+function seedLocalUsers() {
+  const users = JSON.parse(localStorage.getItem("localAuthUsers") || "[]");
+  const adminUser = users.find((user) => user.identifier.toLowerCase() === "cannafy.pe@gmail.com");
+  if (adminUser) {
+    adminUser.nombre = "ADM CANNAFY";
+    adminUser.apodo = "ADM CANNAFY";
+    adminUser.bio = "Cuenta administrativa compartida de Cannafy.";
+    adminUser.foto_perfil = adminUser.foto_perfil || "cannafy-logo.png";
+    adminUser.verified = true;
+    localStorage.setItem("localAuthUsers", JSON.stringify(users));
+  } else {
+    users.unshift({
+      id: 1,
+      identifier: "cannafy.pe@gmail.com",
+      telefono: "",
+      password: "123456",
+      role: "admin",
+      nombre: "ADM CANNAFY",
+      apodo: "ADM CANNAFY",
+      bio: "Cuenta administrativa compartida de Cannafy.",
+      foto_perfil: "cannafy-logo.png",
+      verified: true
+    });
+    localStorage.setItem("localAuthUsers", JSON.stringify(users));
+  }
+  return users;
+}
+
+async function registrar() {
+  const nombre = document.getElementById("nombre").value.trim();
+  const identifier = document.getElementById("identifier").value.trim();
+  const password = document.getElementById("password").value;
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  if (!nombre || !identifier || password.length < 6) {
+    estado.textContent = "Completa nombre, acceso y una contraseña válida.";
+    return;
+  }
+
+  const correo = identifier.includes("@") ? identifier.toLowerCase() : "";
+  const telefono = identifier.includes("@") ? "" : identifier;
+
+  if (IS_LOCAL_FILE) {
+    return registrarLocal(nombre, identifier, password, estado);
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: "consumidor",
+        nombre,
+        correo,
+        telefono,
+        password,
+        acepto_terminos: true
+      })
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      estado.textContent = result.error || "No se pudo crear la cuenta.";
+      return;
+    }
+
+    localStorage.setItem("lastLoginIdentifier", identifier);
+    estado.textContent = "Cuenta creada. Ahora ya puedes iniciar sesión.";
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 900);
+  } catch (error) {
+    registrarLocal(nombre, identifier, password, estado);
+  }
+}
+
+function registrarLocal(nombre, identifier, password, estado) {
+  const users = seedLocalUsers();
+  const clean = identifier.trim().toLowerCase();
+  const exists = users.some((user) =>
+    user.identifier.toLowerCase() === clean || (user.telefono && user.telefono === identifier.trim())
+  );
+
+  if (exists) {
+    estado.textContent = "Ya existe una cuenta con ese acceso.";
+    return;
+  }
+
+  users.push({
+    id: Date.now(),
+    identifier: identifier.trim(),
+    telefono: identifier.includes("@") ? "" : identifier.trim(),
+    password,
+    role: "consumidor",
+    nombre,
+    apodo: nombre,
+    bio: "",
+    foto_perfil: "",
+    verified: false
+  });
+
+  localStorage.setItem("localAuthUsers", JSON.stringify(users));
+  localStorage.setItem("lastLoginIdentifier", identifier.trim());
+  estado.textContent = "Cuenta creada. Ahora ya puedes iniciar sesión.";
+  setTimeout(() => {
+    window.location.href = "index.html";
+  }, 900);
+}
+</script>
+
+</body>
+</html>

@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cannafy | Zona social</title>
+  <title>Cannafy | Cannacrew's</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
@@ -11,40 +12,46 @@
 <div class="store-shell">
   <header class="store-header">
     <div>
-      <h1>Zona social</h1>
-      <p class="helper-text">Presentaciones, conversaciones y comunidad entre usuarios.</p>
+      <h1>Cannacrew's</h1>
+      <p class="helper-text">Comparte, mira y comenta contenido de la comunidad con una vibra más visual.</p>
     </div>
     <div class="store-actions">
       <button class="secondary-btn" onclick="window.location.href='perfil.html'">Mi perfil</button>
-      <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
-      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
+      <button class="secondary-btn" onclick="window.location.href='acerca.html'">Acerca</button>
       <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportar bug</button>
     </div>
   </header>
 
-  <section class="panel-card">
+  <section class="panel-card social-composer-card">
     <div class="social-composer">
       <div class="identity-row">
         <div id="composerAvatar" class="profile-avatar avatar-fallback"></div>
         <div>
           <h2>Crear publicación</h2>
-          <p class="helper-text">Comparte una idea, una presentación o abre una conversación para la comunidad.</p>
+          <p class="helper-text">Comparte algo simple con la comunidad.</p>
         </div>
       </div>
       <textarea id="postInput" class="social-textarea" placeholder="¿Qué quieres compartir hoy?"></textarea>
+      <div class="upload-row social-upload-row">
+        <input type="url" id="postImageUrl" placeholder="URL de imagen (opcional)">
+        <div class="image-preview-shell">
+          <input type="file" id="postImageFile" accept="image/*">
+          <img id="postPreview" class="image-preview social-preview" alt="Vista previa de la publicación">
+        </div>
+      </div>
       <div class="social-composer-actions">
-        <span class="helper-text">Publica algo breve y claro para generar mejores respuestas.</span>
+        <span class="helper-text">Añade imagen solo si quieres destacar el post.</span>
         <button id="publishBtn">Publicar</button>
       </div>
     </div>
     <p id="estado" class="helper-text"></p>
   </section>
 
-  <section class="panel-card">
+  <section class="panel-card social-feed-shell">
     <div class="panel-header">
-      <h2>Comunidad</h2>
-      <button class="secondary-btn" onclick="cargarPosts()">Actualizar</button>
+      <h2>Feed</h2>
+      <span class="helper-text">Actualización automática</span>
     </div>
     <div id="postList" class="social-feed"></div>
   </section>
@@ -54,14 +61,22 @@
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
 const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
+let postImageBase64 = "";
+let feedRefreshTimer = null;
 
 if (!token || !localStorage.getItem("currentUser")) {
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 }
 
 document.getElementById("publishBtn").addEventListener("click", crearPost);
+document.getElementById("postImageFile").addEventListener("change", cargarArchivoImagen);
+document.getElementById("postImageUrl").addEventListener("input", actualizarPreviewDesdeUrl);
 
 async function api(path, options = {}) {
+  if (IS_LOCAL_FILE) {
+    throw new Error("Modo local sin API");
+  }
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
@@ -91,6 +106,30 @@ function avatarMarkup(name, photo) {
 
 function verifiedMark(user) {
   return user?.verified ? ' <span class="verified-check">✔</span>' : "";
+}
+
+function roleLabel(role, verified) {
+  if (role === "admin" || verified) {
+    return "Administrador";
+  }
+  if (role === "dealer") {
+    return "Tienda";
+  }
+  return "Cannacrew";
+}
+
+function postMetaLabel(post) {
+  if (post.author_role === "admin" || post.verified) {
+    return "Cuenta verificada";
+  }
+  if (post.author_role === "dealer") {
+    return "Tienda";
+  }
+  return "Cannacrew";
+}
+
+function isAdminLike(post) {
+  return post?.author_role === "admin" || post?.verified === true || (post?.author_nombre || "") === "ADM";
 }
 
 function openUserProfile(userId) {
@@ -129,10 +168,52 @@ function composerSetup() {
   }
 }
 
+async function cargarArchivoImagen(event) {
+  const archivo = event.target.files[0];
+  if (!archivo) {
+    postImageBase64 = "";
+    actualizarPreview(document.getElementById("postImageUrl").value.trim());
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    postImageBase64 = String(reader.result || "");
+    actualizarPreview(postImageBase64);
+  };
+  reader.readAsDataURL(archivo);
+}
+
+function actualizarPreviewDesdeUrl() {
+  if (postImageBase64) {
+    return;
+  }
+  actualizarPreview(document.getElementById("postImageUrl").value.trim());
+}
+
+function actualizarPreview(src) {
+  const preview = document.getElementById("postPreview");
+  if (!src) {
+    preview.removeAttribute("src");
+    preview.style.display = "none";
+    return;
+  }
+  preview.src = src;
+  preview.style.display = "block";
+}
+
+function reactionLabel(reaction) {
+  if (reaction === "fire") {
+    return "Quemaste";
+  }
+  return "Me pega";
+}
+
 async function crearPost() {
   const input = document.getElementById("postInput");
   const content = input.value.trim();
   const estado = document.getElementById("estado");
+  const imagen = postImageBase64 || document.getElementById("postImageUrl").value.trim();
   estado.textContent = "";
 
   if (!content) {
@@ -141,19 +222,50 @@ async function crearPost() {
   }
 
   try {
+    if (IS_LOCAL_FILE) {
+      const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]");
+      posts.unshift({
+        id: Date.now(),
+        author_id: currentUser.id,
+        author_nombre: currentUser.apodo || currentUser.nombre,
+        author_role: currentUser.role,
+        author_foto: currentUser.foto_perfil || "",
+        verified: currentUser.role === "admin",
+        content,
+        imagen,
+        created_at: new Date().toISOString(),
+        reactions: { fire: 0, heart: 0 },
+        user_reaction: null,
+        comments: []
+      });
+      localStorage.setItem("localSocialPosts", JSON.stringify(posts));
+      input.value = "";
+      document.getElementById("postImageUrl").value = "";
+      document.getElementById("postImageFile").value = "";
+      postImageBase64 = "";
+      actualizarPreview("");
+      await cargarPosts();
+      return;
+    }
+
     await api("/api/posts", {
       method: "POST",
-      body: JSON.stringify({ content })
+      body: JSON.stringify({ content, imagen })
     });
     input.value = "";
+    document.getElementById("postImageUrl").value = "";
+    document.getElementById("postImageFile").value = "";
+    postImageBase64 = "";
+    actualizarPreview("");
     await cargarPosts();
   } catch (error) {
     estado.textContent = error.message;
   }
 }
 
-async function comentar(postId) {
-  const input = document.getElementById(`comment-${postId}`);
+async function comentar(postId, parentCommentId = null) {
+  const suffix = parentCommentId ? `reply-${postId}-${parentCommentId}` : `comment-${postId}`;
+  const input = document.getElementById(suffix);
   const content = input.value.trim();
   const estado = document.getElementById("estado");
   estado.textContent = "";
@@ -166,7 +278,10 @@ async function comentar(postId) {
   try {
     await api(`/api/posts/${postId}/comments`, {
       method: "POST",
-      body: JSON.stringify({ content })
+      body: JSON.stringify({
+        content,
+        parent_comment_id: parentCommentId
+      })
     });
     input.value = "";
     await cargarPosts();
@@ -180,6 +295,44 @@ async function reaccionar(postId, reaction, currentReaction) {
   estado.textContent = "";
 
   try {
+    if (IS_LOCAL_FILE) {
+      const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]");
+      const updatedPosts = posts.map((post) => {
+        if (post.id !== postId) {
+          return post;
+        }
+
+        const nextReaction = currentReaction === reaction ? null : reaction;
+        const reactions = {
+          fire: Number(post.reactions?.fire || 0),
+          heart: Number(post.reactions?.heart || 0)
+        };
+
+        if (currentReaction === "fire" && reactions.fire > 0) {
+          reactions.fire -= 1;
+        }
+        if (currentReaction === "heart" && reactions.heart > 0) {
+          reactions.heart -= 1;
+        }
+        if (nextReaction === "fire") {
+          reactions.fire += 1;
+        }
+        if (nextReaction === "heart") {
+          reactions.heart += 1;
+        }
+
+        return {
+          ...post,
+          reactions,
+          user_reaction: nextReaction
+        };
+      });
+
+      localStorage.setItem("localSocialPosts", JSON.stringify(updatedPosts));
+      await cargarPosts();
+      return;
+    }
+
     await api(`/api/posts/${postId}/reactions`, {
       method: "POST",
       body: JSON.stringify({
@@ -193,11 +346,162 @@ async function reaccionar(postId, reaction, currentReaction) {
   }
 }
 
+async function reaccionarComentario(postId, commentId, reaction, currentReaction) {
+  const estado = document.getElementById("estado");
+  estado.textContent = "";
+
+  try {
+    if (IS_LOCAL_FILE) {
+      const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]");
+      const updatedPosts = posts.map((post) => {
+        if (post.id !== postId) {
+          return post;
+        }
+
+        const comments = (post.comments || []).map((comment) => {
+          if (comment.id !== commentId) {
+            return comment;
+          }
+
+          const nextReaction = currentReaction === reaction ? null : reaction;
+          const reactions = {
+            fire: Number(comment.reactions?.fire || 0),
+            heart: Number(comment.reactions?.heart || 0)
+          };
+
+          if (currentReaction === "fire" && reactions.fire > 0) {
+            reactions.fire -= 1;
+          }
+          if (currentReaction === "heart" && reactions.heart > 0) {
+            reactions.heart -= 1;
+          }
+          if (nextReaction === "fire") {
+            reactions.fire += 1;
+          }
+          if (nextReaction === "heart") {
+            reactions.heart += 1;
+          }
+
+          return {
+            ...comment,
+            reactions,
+            user_reaction: nextReaction
+          };
+        });
+
+        return {
+          ...post,
+          comments
+        };
+      });
+
+      localStorage.setItem("localSocialPosts", JSON.stringify(updatedPosts));
+      await cargarPosts();
+      return;
+    }
+
+    await api(`/api/posts/${postId}/comments/${commentId}/reactions`, {
+      method: "POST",
+      body: JSON.stringify({
+        reaction,
+        toggle_off: currentReaction === reaction
+      })
+    });
+    await cargarPosts();
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+function toggleReplyForm(commentId) {
+  const box = document.getElementById(`reply-box-${commentId}`);
+  if (!box) {
+    return;
+  }
+  box.classList.toggle("hidden");
+}
+
+function renderReply(reply) {
+  return `
+    <div class="comment-reply">
+      <div class="identity-row">
+        <span class="clickable-avatar" onclick="openUserProfile(${reply.author_id})">${avatarMarkup(reply.author_nombre, reply.author_foto)}</span>
+        <div>
+          <strong class="clickable-name" onclick="openUserProfile(${reply.author_id})">${escapeHtml(reply.author_nombre)}${reply.author_verified ? ' <span class="verified-check">✔</span>' : ""}</strong>
+          <small class="social-time">${formatTime(reply.created_at)}</small>
+        </div>
+      </div>
+      <span>${escapeHtml(reply.content)}</span>
+    </div>
+  `;
+}
+
+function renderComment(postId, comment) {
+  return `
+    <div class="comment-item">
+      <div class="identity-row">
+        <span class="clickable-avatar" onclick="openUserProfile(${comment.author_id})">${avatarMarkup(comment.author_nombre, comment.author_foto)}</span>
+        <div>
+          <strong class="clickable-name" onclick="openUserProfile(${comment.author_id})">${escapeHtml(comment.author_nombre)}${comment.author_verified ? ' <span class="verified-check">✔</span>' : ""}</strong>
+          <small class="social-time">${formatTime(comment.created_at)}</small>
+        </div>
+      </div>
+      <span>${escapeHtml(comment.content)}</span>
+      <div class="comment-actions-row">
+        <button class="secondary-btn reaction-btn ${comment.user_reaction === "fire" ? "active" : ""}" onclick="reaccionarComentario(${postId}, ${comment.id}, 'fire', '${comment.user_reaction || ""}')">🔥 Quemaste ${comment.reactions.fire || 0}</button>
+        <button class="secondary-btn reaction-btn ${comment.user_reaction === "heart" ? "active" : ""}" onclick="reaccionarComentario(${postId}, ${comment.id}, 'heart', '${comment.user_reaction || ""}')">❤️ Me pega ${comment.reactions.heart || 0}</button>
+        <button class="secondary-btn mini-action-btn" onclick="toggleReplyForm(${comment.id})">Responder</button>
+      </div>
+      <div id="reply-box-${comment.id}" class="reply-form hidden">
+        <input id="reply-${postId}-${comment.id}" type="text" placeholder="Responder comentario">
+        <button class="secondary-btn" onclick="comentar(${postId}, ${comment.id})">Enviar</button>
+      </div>
+      <div class="reply-list">
+        ${(comment.replies || []).map(renderReply).join("")}
+      </div>
+    </div>
+  `;
+}
+
 async function cargarPosts() {
   const container = document.getElementById("postList");
   container.innerHTML = "<p class='helper-text'>Cargando publicaciones...</p>";
 
   try {
+    if (IS_LOCAL_FILE) {
+      const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]");
+      if (!posts.length) {
+        container.innerHTML = "<p class='helper-text'>Todavía no hay publicaciones en la comunidad.</p>";
+        return;
+      }
+
+      container.innerHTML = posts.map((post) => `
+        <article class="social-post instagram-post">
+          <div class="social-post-header">
+            <div class="identity-row">
+              <span class="clickable-avatar">${avatarMarkup(post.author_nombre, post.author_foto)}</span>
+              <div>
+                <strong>${escapeHtml(post.author_nombre)}</strong>
+                <div class="instagram-meta-row">
+                  <span class="product-meta">${postMetaLabel(post)}</span>
+                  <small class="social-time">${formatTime(post.created_at)}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          ${post.imagen ? `<img class="social-post-image" src="${post.imagen}" alt="Imagen de la publicación">` : ""}
+          <div class="instagram-post-body">
+            <p class="social-post-copy"><strong>${escapeHtml(post.author_nombre)}</strong> ${escapeHtml(post.content)}</p>
+          </div>
+          <div class="social-reactions">
+            <button class="secondary-btn reaction-btn ${post.user_reaction === "fire" ? "active" : ""}" onclick="reaccionar(${post.id}, 'fire', '${post.user_reaction || ""}')">🔥 Quemaste ${post.reactions.fire || 0}</button>
+            <button class="secondary-btn reaction-btn ${post.user_reaction === "heart" ? "active" : ""}" onclick="reaccionar(${post.id}, 'heart', '${post.user_reaction || ""}')">❤️ Me pega ${post.reactions.heart || 0}</button>
+          </div>
+        </article>
+      `).join("");
+      return;
+    }
+
     const posts = await api("/api/posts");
     if (!posts.length) {
       container.innerHTML = "<p class='helper-text'>Todavía no hay publicaciones en la comunidad.</p>";
@@ -205,36 +509,29 @@ async function cargarPosts() {
     }
 
     container.innerHTML = posts.map((post) => `
-      <article class="social-post">
+      <article class="social-post instagram-post">
         <div class="social-post-header">
           <div class="identity-row">
             <span class="clickable-avatar" onclick="openUserProfile(${post.author_id})">${avatarMarkup(post.author_nombre, post.author_foto)}</span>
             <div>
               <strong class="clickable-name" onclick="openUserProfile(${post.author_id})">${escapeHtml(post.author_nombre)}${verifiedMark(post)}</strong>
-              <span class="product-meta">${post.author_role || "usuario"}</span>
-              <small class="social-time">${formatTime(post.created_at)}</small>
+              <div class="instagram-meta-row">
+                <span class="product-meta">${postMetaLabel(post)}</span>
+                <small class="social-time">${formatTime(post.created_at)}</small>
+              </div>
             </div>
           </div>
         </div>
-        <p class="social-post-copy">${escapeHtml(post.content)}</p>
+        ${post.imagen ? `<img class="social-post-image" src="${post.imagen}" alt="Imagen de la publicación">` : ""}
+        <div class="instagram-post-body">
+          <p class="social-post-copy"><strong>${escapeHtml(post.author_nombre)}</strong> ${escapeHtml(post.content)}</p>
+        </div>
         <div class="social-reactions">
-          <button class="secondary-btn reaction-btn ${post.user_reaction === "like" ? "active" : ""}" onclick="reaccionar(${post.id}, 'like', '${post.user_reaction || ""}')">Me gusta ${post.reactions.like || 0}</button>
-          <button class="secondary-btn reaction-btn ${post.user_reaction === "fire" ? "active" : ""}" onclick="reaccionar(${post.id}, 'fire', '${post.user_reaction || ""}')">Fuego ${post.reactions.fire || 0}</button>
-          <button class="secondary-btn reaction-btn ${post.user_reaction === "idea" ? "active" : ""}" onclick="reaccionar(${post.id}, 'idea', '${post.user_reaction || ""}')">Idea ${post.reactions.idea || 0}</button>
+          <button class="secondary-btn reaction-btn ${post.user_reaction === "fire" ? "active" : ""}" onclick="reaccionar(${post.id}, 'fire', '${post.user_reaction || ""}')">🔥 Quemaste ${post.reactions.fire || 0}</button>
+          <button class="secondary-btn reaction-btn ${post.user_reaction === "heart" ? "active" : ""}" onclick="reaccionar(${post.id}, 'heart', '${post.user_reaction || ""}')">❤️ Me pega ${post.reactions.heart || 0}</button>
         </div>
         <div class="comment-list">
-          ${post.comments.map((comment) => `
-            <div class="comment-item">
-              <div class="identity-row">
-                <span class="clickable-avatar" onclick="openUserProfile(${comment.author_id})">${avatarMarkup(comment.author_nombre, comment.author_foto)}</span>
-                <div>
-                  <strong class="clickable-name" onclick="openUserProfile(${comment.author_id})">${escapeHtml(comment.author_nombre)}${comment.author_verified ? ' <span class="verified-check">✔</span>' : ""}</strong>
-                  <small class="social-time">${formatTime(comment.created_at)}</small>
-                </div>
-              </div>
-              <span>${escapeHtml(comment.content)}</span>
-            </div>
-          `).join("")}
+          ${post.comments.map((comment) => renderComment(post.id, comment)).join("")}
         </div>
         <div class="comment-form">
           <input id="comment-${post.id}" type="text" placeholder="Escribe una respuesta a esta publicación">
@@ -249,6 +546,9 @@ async function cargarPosts() {
 
 composerSetup();
 cargarPosts();
+if (!IS_LOCAL_FILE) {
+  feedRefreshTimer = window.setInterval(cargarPosts, 15000);
+}
 </script>
 
 </body>

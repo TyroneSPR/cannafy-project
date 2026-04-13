@@ -4,32 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cannafy | Mi perfil</title>
+  <link rel="icon" type="image/png" href="cannafy-logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-page">
 
-<div class="store-shell">
+<div class="store-shell profile-page-shell">
   <header class="store-header">
     <div>
       <h1>Mi perfil</h1>
-      <p class="helper-text">Personaliza cómo te verán los demás usuarios dentro de la plataforma.</p>
+      <p class="helper-text">Tu espacio dentro de Cannafy.</p>
     </div>
     <div class="store-actions">
       <button class="secondary-btn" id="adminShortcutBtn" hidden onclick="window.location.href='admin.html'">Panel ADM</button>
       <button class="secondary-btn" onclick="window.location.href='tienda.html'">Tienda</button>
-      <button class="secondary-btn" onclick="window.location.href='chat.html'">Mensajes</button>
-      <button class="secondary-btn" onclick="window.location.href='social.html'">Zona social</button>
-      <button class="secondary-btn" onclick="window.location.href='reportes.html'">Reportar bug</button>
+      <button class="secondary-btn" onclick="window.location.href='social.html'">Cannacrew's</button>
     </div>
   </header>
 
-  <section class="panel-card profile-shell">
-    <div class="profile-preview">
-      <div id="profilePreview" class="profile-avatar large avatar-fallback" aria-label="Foto de perfil"></div>
+  <section class="panel-card profile-hero-card">
+    <div class="profile-hero">
+      <div id="profileHeroAvatar" class="profile-avatar profile-hero-avatar avatar-fallback"></div>
+      <div class="profile-hero-main">
+        <div class="profile-hero-head">
+          <div>
+            <h2 id="profileHeroHandle">tuusuario</h2>
+            <p id="profileHeroName" class="helper-text"></p>
+          </div>
+        </div>
+        <div class="profile-stats-row">
+          <span><strong id="statPosts">0</strong> publicaciones</span>
+          <span><strong id="statFollowers">0</strong> seguidores</span>
+          <span><strong id="statFollowing">0</strong> seguidos</span>
+        </div>
+        <p id="profileHeroRole" class="product-meta"></p>
+        <p id="profileHeroBio" class="profile-hero-bio"></p>
+        <div id="profileHeroActions" class="profile-action-row hidden">
+          <button type="button" onclick="showSection('edit')">Editar perfil</button>
+          <button class="secondary-btn" type="button" onclick="showSection('security')">Seguridad</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel-card">
+    <div class="feature-strip">
+      <button class="secondary-btn" type="button" onclick="showSection('edit')">Perfil</button>
+      <button class="secondary-btn" type="button" onclick="showSection('account')">Cuenta</button>
+      <button class="secondary-btn" type="button" onclick="showSection('security')">Seguridad</button>
+    </div>
+  </section>
+
+  <section id="section-edit" class="panel-card profile-section">
+    <div class="section-heading">
       <div>
-        <h2 id="previewName">Tu perfil</h2>
-        <p id="previewRole" class="product-meta"></p>
-        <p id="previewBio" class="helper-text"></p>
+        <h2>Editar perfil</h2>
+        <p class="helper-text">Actualiza tu foto, tu apodo y tu bio.</p>
       </div>
     </div>
 
@@ -38,28 +68,158 @@
       <input id="fotoUrl" type="url" placeholder="URL de foto (opcional)">
     </div>
     <input id="fotoArchivo" type="file" accept="image/*">
-    <textarea id="bio" class="social-textarea" placeholder="Cuéntale algo breve a la comunidad"></textarea>
-    <button id="saveProfileBtn">Guardar perfil</button>
-    <p id="estado" class="helper-text"></p>
+    <textarea id="bio" class="social-textarea" placeholder="Cuéntale algo breve a la Cannacrew"></textarea>
+    <button id="saveProfileBtn">Guardar cambios</button>
+    <p id="profileEstado" class="helper-text"></p>
+  </section>
+
+  <section id="section-account" class="panel-card profile-section hidden">
+    <div class="section-heading">
+      <div>
+        <h2>Datos de cuenta</h2>
+        <p class="helper-text">Información principal asociada a tu acceso.</p>
+      </div>
+    </div>
+
+    <div class="detail-spec-list">
+      <div class="detail-spec-item">
+        <span>Nombre</span>
+        <strong id="accountNombre">-</strong>
+      </div>
+      <div class="detail-spec-item">
+        <span>Correo</span>
+        <strong id="accountCorreo">-</strong>
+      </div>
+      <div class="detail-spec-item">
+        <span>Teléfono</span>
+        <strong id="accountTelefono">-</strong>
+      </div>
+      <div class="detail-spec-item">
+        <span>Rol</span>
+        <strong id="accountRol">-</strong>
+      </div>
+    </div>
+  </section>
+
+  <section id="section-security" class="panel-card profile-section hidden">
+    <div class="section-heading">
+      <div>
+        <h2>Seguridad</h2>
+        <p class="helper-text">Cambia tu contraseña de acceso.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <input id="currentPassword" type="password" placeholder="Contraseña actual">
+      <input id="newPassword" type="password" placeholder="Nueva contraseña">
+    </div>
+    <input id="confirmPassword" type="password" placeholder="Confirmar nueva contraseña">
+    <button id="saveSecurityBtn">Actualizar contraseña</button>
+    <p id="securityEstado" class="helper-text"></p>
+  </section>
+
+  <section id="ownShowcaseSection" class="panel-card hidden">
+    <div class="section-heading">
+      <div>
+        <h2>Tu vitrina</h2>
+        <p class="helper-text">Así se ve la vitrina pública de los perfiles verificados.</p>
+      </div>
+    </div>
+    <div id="ownProducts" class="productos-grid dense-grid"></div>
   </section>
 </div>
 
 <script>
 const API_URL = window.location.origin;
 const token = localStorage.getItem("token");
+const IS_LOCAL_FILE = window.location.protocol === "file:";
 let fotoArchivoBase64 = "";
 
 if (!token || !localStorage.getItem("currentUser")) {
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 }
 
 document.getElementById("saveProfileBtn").addEventListener("click", guardarPerfil);
+document.getElementById("saveSecurityBtn").addEventListener("click", actualizarPassword);
 document.getElementById("fotoArchivo").addEventListener("change", cargarFotoArchivo);
 document.getElementById("fotoUrl").addEventListener("input", actualizarPreviewDesdeUrl);
-document.getElementById("apodo").addEventListener("input", pintarPreview);
-document.getElementById("bio").addEventListener("input", pintarPreview);
+document.getElementById("apodo").addEventListener("input", pintarHero);
+document.getElementById("bio").addEventListener("input", pintarHero);
 
 async function api(path, options = {}) {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+
+  if (IS_LOCAL_FILE) {
+    if (!currentUser) {
+      throw new Error("Sesion invalida");
+    }
+
+    if (path === "/api/auth/me") {
+      return { user: currentUser };
+    }
+
+    if (path === `/api/users/${currentUser.id}`) {
+      const products = JSON.parse(localStorage.getItem("localProducts") || "[]")
+        .filter((item) => item.dealer_id === currentUser.id);
+      const posts = JSON.parse(localStorage.getItem("localSocialPosts") || "[]")
+        .filter((item) => item.author_id === currentUser.id);
+      return {
+        user: currentUser,
+        products,
+        stats: {
+          posts: posts.length,
+          followers: 0,
+          following: 0,
+          products: products.length
+        },
+        rating: { average: 0, count: 0 },
+        my_rating: null
+      };
+    }
+
+    if (path === "/api/auth/profile" && options.method === "PUT") {
+      const payload = JSON.parse(options.body || "{}");
+      const updatedUser = {
+        ...currentUser,
+        apodo: payload.apodo || currentUser.apodo || currentUser.nombre,
+        bio: payload.bio || "",
+        foto_perfil: payload.foto_perfil || ""
+      };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      const localUsers = JSON.parse(localStorage.getItem("localAuthUsers") || "[]");
+      localStorage.setItem(
+        "localAuthUsers",
+        JSON.stringify(localUsers.map((user) => user.id === updatedUser.id ? { ...user, ...updatedUser } : user))
+      );
+      return { mensaje: "Perfil actualizado", user: updatedUser };
+    }
+
+    if (path === "/api/auth/security/password" && options.method === "PUT") {
+      const payload = JSON.parse(options.body || "{}");
+      const localUsers = JSON.parse(localStorage.getItem("localAuthUsers") || "[]");
+      const storedUser = localUsers.find((user) => user.id === currentUser.id);
+      if (!storedUser) {
+        throw new Error("No se encontró la cuenta local");
+      }
+      if (storedUser.password !== payload.current_password) {
+        throw new Error("La contraseña actual no es correcta");
+      }
+      if (!payload.new_password || payload.new_password.length < 6) {
+        throw new Error("La nueva contraseña debe tener al menos 6 caracteres");
+      }
+      if (payload.current_password === payload.new_password) {
+        throw new Error("La nueva contraseña debe ser diferente");
+      }
+      localStorage.setItem(
+        "localAuthUsers",
+        JSON.stringify(localUsers.map((user) => user.id === currentUser.id ? { ...user, password: payload.new_password } : user))
+      );
+      return { mensaje: "Contraseña actualizada" };
+    }
+
+    throw new Error("Ruta no disponible en modo local");
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
@@ -76,44 +236,112 @@ async function api(path, options = {}) {
   return data;
 }
 
-function pintarPreview() {
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-  const apodo = document.getElementById("apodo").value.trim() || currentUser?.apodo || currentUser?.nombre || "Tu perfil";
-  const bio = document.getElementById("bio").value.trim();
-  const foto = fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim() || currentUser?.foto_perfil || "";
-  const roleLabel = currentUser?.role === "admin"
-    ? "ADM"
-    : currentUser?.role === "dealer"
-      ? "Dealer"
-      : "Consumidor";
+function roleLabel(role) {
+  if (role === "admin") return "Perfil verificado";
+  if (role === "dealer") return "Tienda";
+  return "Usuario";
+}
 
-  document.getElementById("previewName").textContent = apodo;
-  document.getElementById("previewRole").textContent = roleLabel || "";
-  document.getElementById("previewBio").textContent = bio || "Sin bio todavía.";
+function getInitial(name) {
+  return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function showSection(name) {
+  document.querySelectorAll(".profile-section").forEach((section) => {
+    section.classList.toggle("hidden", section.id !== `section-${name}`);
+  });
+}
+
+function pintarHero() {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const apodo = document.getElementById("apodo").value.trim() || currentUser?.apodo || currentUser?.nombre || "tuusuario";
+  const bio = document.getElementById("bio").value.trim() || currentUser?.bio || "Sin bio todavía.";
+  const fallbackAdminPhoto = currentUser?.role === "admin" ? "cannafy-logo.png" : "";
+  const foto = fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim() || currentUser?.foto_perfil || fallbackAdminPhoto;
+
+  document.getElementById("profileHeroHandle").innerHTML = `${apodo}${currentUser?.verified ? ' <span class="verified-check">✔</span>' : ""}`;
+  document.getElementById("profileHeroName").textContent = currentUser?.nombre || "";
+  document.getElementById("profileHeroRole").textContent = roleLabel(currentUser?.role);
+  document.getElementById("profileHeroBio").textContent = bio;
   document.getElementById("adminShortcutBtn").hidden = currentUser?.role !== "admin";
 
-  const preview = document.getElementById("profilePreview");
+  const avatar = document.getElementById("profileHeroAvatar");
   if (foto) {
-    preview.style.backgroundImage = `url("${foto}")`;
-    preview.textContent = "";
-    preview.classList.remove("empty", "avatar-fallback");
+    avatar.style.backgroundImage = `url("${foto}")`;
+    avatar.textContent = "";
+    avatar.classList.remove("avatar-fallback");
   } else {
-    preview.style.backgroundImage = "";
-    preview.textContent = (apodo.charAt(0) || "?").toUpperCase();
-    preview.classList.add("empty", "avatar-fallback");
+    avatar.style.backgroundImage = "";
+    avatar.textContent = getInitial(apodo);
+    avatar.classList.add("avatar-fallback");
   }
+}
+
+function pintarCuenta(user) {
+  document.getElementById("accountNombre").textContent = user.nombre || "-";
+  document.getElementById("accountCorreo").textContent = user.correo || "No registrado";
+  document.getElementById("accountTelefono").textContent = user.telefono || "No registrado";
+  document.getElementById("accountRol").textContent = roleLabel(user.role);
+}
+
+function renderProducts(products) {
+  const grid = document.getElementById("ownProducts");
+  const section = document.getElementById("ownShowcaseSection");
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const isVerifiedProfile = Boolean(currentUser?.verified);
+
+  section.classList.toggle("hidden", !isVerifiedProfile);
+  if (!isVerifiedProfile) {
+    grid.innerHTML = "";
+    return;
+  }
+
+  if (!products.length) {
+    grid.innerHTML = "<p class='helper-text'>Todavía no tienes productos publicados.</p>";
+    return;
+  }
+
+  grid.innerHTML = products.map((product) => `
+    <article class="product-card compact-card">
+      <img src="${product.imagen}" alt="${escapeHtml(product.nombre)}">
+      <div class="product-copy">
+        <span class="product-meta">${escapeHtml(product.categoria || "producto")}</span>
+        <h3>${escapeHtml(product.nombre)}</h3>
+        <p>${escapeHtml(product.descripcion || "Sin descripción")}</p>
+        <div class="price-stack">
+          <strong>${escapeHtml(product.precio_mostrar || product.precio)}</strong>
+        </div>
+      </div>
+    </article>
+  `).join("");
 }
 
 async function cargarPerfil() {
   try {
-    const result = await api("/api/auth/me");
-    localStorage.setItem("currentUser", JSON.stringify(result.user));
-    document.getElementById("apodo").value = result.user.apodo || result.user.nombre || "";
-    document.getElementById("fotoUrl").value = result.user.foto_perfil || "";
-    document.getElementById("bio").value = result.user.bio || "";
-    pintarPreview();
+    const me = await api("/api/auth/me");
+    localStorage.setItem("currentUser", JSON.stringify(me.user));
+    const profile = await api(`/api/users/${me.user.id}`);
+
+    document.getElementById("apodo").value = me.user.apodo || me.user.nombre || "";
+    document.getElementById("fotoUrl").value = me.user.foto_perfil || "";
+    document.getElementById("bio").value = me.user.bio || "";
+    document.getElementById("statPosts").textContent = profile.stats?.posts || 0;
+    document.getElementById("statFollowers").textContent = profile.stats?.followers || 0;
+    document.getElementById("statFollowing").textContent = profile.stats?.following || 0;
+    pintarHero();
+    pintarCuenta(me.user);
+    renderProducts(profile.products || []);
   } catch (error) {
-    document.getElementById("estado").textContent = error.message;
+    document.getElementById("profileEstado").textContent = error.message;
   }
 }
 
@@ -121,26 +349,26 @@ function cargarFotoArchivo(event) {
   const file = event.target.files[0];
   if (!file) {
     fotoArchivoBase64 = "";
-    pintarPreview();
+    pintarHero();
     return;
   }
 
   const reader = new FileReader();
   reader.onload = () => {
     fotoArchivoBase64 = String(reader.result || "");
-    pintarPreview();
+    pintarHero();
   };
   reader.readAsDataURL(file);
 }
 
 function actualizarPreviewDesdeUrl() {
   if (!fotoArchivoBase64) {
-    pintarPreview();
+    pintarHero();
   }
 }
 
 async function guardarPerfil() {
-  const estado = document.getElementById("estado");
+  const estado = document.getElementById("profileEstado");
   estado.textContent = "";
 
   try {
@@ -152,7 +380,6 @@ async function guardarPerfil() {
         foto_perfil: fotoArchivoBase64 || document.getElementById("fotoUrl").value.trim()
       })
     });
-
     localStorage.setItem("currentUser", JSON.stringify(result.user));
     fotoArchivoBase64 = "";
     document.getElementById("fotoArchivo").value = "";
@@ -163,6 +390,41 @@ async function guardarPerfil() {
   }
 }
 
+async function actualizarPassword() {
+  const estado = document.getElementById("securityEstado");
+  const currentPassword = document.getElementById("currentPassword").value;
+  const newPassword = document.getElementById("newPassword").value;
+  const confirmPassword = document.getElementById("confirmPassword").value;
+
+  estado.textContent = "";
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    estado.textContent = "Completa todos los campos de seguridad.";
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    estado.textContent = "La confirmación no coincide.";
+    return;
+  }
+
+  try {
+    const result = await api("/api/auth/security/password", {
+      method: "PUT",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+    });
+    document.getElementById("currentPassword").value = "";
+    document.getElementById("newPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+    estado.textContent = result.mensaje || "Contraseña actualizada.";
+  } catch (error) {
+    estado.textContent = error.message;
+  }
+}
+
+showSection("edit");
 cargarPerfil();
 </script>
 
